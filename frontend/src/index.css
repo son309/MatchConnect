@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #ec4899;
+  --primary-hover: #db2777;
+  --bg-soft: #fdf2f8;
+  --ring-color: rgba(236, 72, 153, 0.2);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.typing-dots::after {
+  content: '';
+  animation: typing-dots 1.4s infinite;
+}
+
+@keyframes typing-dots {
+
+  0%,
+  20% {
+    content: '';
+  }
+
+  40% {
+    content: '.';
+  }
+
+  60% {
+    content: '..';
+  }
+
+  80%,
+  100% {
+    content: '...';
+  }
+}
+
+audio::-webkit-media-controls-play-button,
+audio::-webkit-media-controls-panel,
+audio::-webkit-media-controls-enclosure {
+  background-color: transparent !important;
+}
+
+audio::-webkit-media-controls-time-remaining-display {
+  display: none !important;
+}
