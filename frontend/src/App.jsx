@@ -19,6 +19,7 @@ import SentRequests from "./components/features/friends/SentRequests";
 import ProfileSettings from "./components/features/settings/ProfileSettings";
 import ChangePassword from "./components/features/settings/ChangePassword";
 import ActivitySettings from "./components/features/settings/ActivitySettings";
+import AdminDashboard from "./components/features/admin/AdminDashboard";
 function App() {
   const { authUser, isCheckingAuth } = useAuth();
 
@@ -67,6 +68,7 @@ function App() {
           </Route>
           <Route path="calls" element={<CallsDashboard />} />
           {/* [MODIFIED] Cấu hình Nested Route cho Settings */}
+          <Route path="admin" element={authUser?.role === "admin" ? <AdminDashboard /> : <Navigate to="/chat/dating?tab=discover" replace />} />
           <Route path="settings" element={<SettingsDashboard />}>
             {/* Mặc định vào settings sẽ chuyển ngay tới profile */}
             <Route index element={<Navigate to="activity" replace />} />

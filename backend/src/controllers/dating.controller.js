@@ -98,6 +98,32 @@ function isMutualPreference(currentUser, candidate) {
     );
 }
 
+function buildDiscoverFilters(query) {
+    const filters = {};
+    const minAgeInput = String(query.minAge || "").trim();
+    const maxAgeInput = String(query.maxAge || "").trim();
+    const minAge = minAgeInput ? Number(minAgeInput) : null;
+    const maxAge = maxAgeInput ? Number(maxAgeInput) : null;
+    const city = String(query.city || "").trim();
+    const intentions = String(query.intentions || "").trim();
+
+    if (minAge !== null || maxAge !== null) {
+        filters["datingProfile.age"] = {};
+        if (Number.isFinite(minAge)) filters["datingProfile.age"].$gte = Math.max(18, minAge);
+        if (Number.isFinite(maxAge)) filters["datingProfile.age"].$lte = Math.min(100, maxAge);
+    }
+
+    if (city) {
+        filters["datingProfile.city"] = { $regex: city, $options: "i" };
+    }
+
+    if (intentions) {
+        filters["datingProfile.intentions"] = intentions;
+    }
+
+    return filters;
+}
+
 export const getDatingProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select(userSelect);
@@ -143,6 +169,7 @@ export const discoverProfiles = async (req, res) => {
             "datingProfile blockedUsers spammedUsers"
         );
         const limit = Math.min(Number(req.query.limit) || 20, 50);
+        const discoverFilters = buildDiscoverFilters(req.query);
 
         const [actions, incomingLikes, matches] = await Promise.all([
             DatingAction.find({ from: req.user._id, action: "like" }).select("to"),
@@ -173,6 +200,7 @@ export const discoverProfiles = async (req, res) => {
                 $nin: [...excludedIds].map((id) => new mongoose.Types.ObjectId(id)),
             },
             blockedUsers: { $ne: req.user._id },
+            ...discoverFilters,
         })
             .select(userSelect)
             .sort({ updatedAt: -1 })

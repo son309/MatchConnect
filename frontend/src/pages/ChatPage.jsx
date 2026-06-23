@@ -7,6 +7,7 @@ import { CallProvider } from "../context/CallContext";
 import { GroupProvider } from "../context/GroupContext";
 import { BlockProvider } from "../context/BlockContext";
 import { DatingProvider } from "../context/DatingContext";
+import { ReportProvider } from "../context/ReportContext";
 import { useNavigate, Outlet } from "react-router-dom";
 import { LoaderIcon } from "lucide-react";
 import NavigationSidebar from "../components/features/NavigationSidebar";
@@ -57,9 +58,11 @@ export default function ChatPage() {
           <ChatProvider>
             <GroupProvider>
               <DatingProvider>
-                <CallProvider>
-                  <ChatPageContent />
-                </CallProvider>
+                <ReportProvider>
+                  <CallProvider>
+                    <ChatPageContent />
+                  </CallProvider>
+                </ReportProvider>
               </DatingProvider>
             </GroupProvider>
           </ChatProvider>
@@ -68,3 +71,5 @@ export default function ChatPage() {
     </SocketProvider>
   );
 }
+
+

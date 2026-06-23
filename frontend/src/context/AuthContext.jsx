@@ -114,6 +114,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const requestProfileVerification = async () => {
+        try {
+            const res = await axiosInstance.post("/auth/request-verification");
+            setAuthUser(res.data);
+            toast.success("Verification request submitted");
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Verification request failed");
+            throw error;
+        }
+    };
+
         const value = {
         authUser,
         setAuthUser,
@@ -130,6 +142,7 @@ export const AuthProvider = ({ children }) => {
         isResettingPassword,
         forgotPassword,
         resetPassword,
+        requestProfileVerification,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

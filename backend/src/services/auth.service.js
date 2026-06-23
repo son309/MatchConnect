@@ -1,15 +1,36 @@
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 import User from "../models/User.js";
+import { ENV } from "../lib/env.js";
 import { AppError } from "./AppError.js";
 
 // Email regex for validation
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const ADMIN_EMAILS = new Set(
+    String(ENV.ADMIN_EMAILS || "")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean)
+);
+
+const isAdminEmail = (email) => ADMIN_EMAILS.has(String(email || "").toLowerCase());
+
+const publicUser = (user) => ({
+    _id: user._id,
+    fullName: user.fullName,
+    email: user.email,
+    profilePic: user.profilePic,
+    role: user.role,
+    isSuspended: user.isSuspended,
+    profileVerification: user.profileVerification,
+    datingProfile: user.datingProfile,
+});
+
 /**
  * Create a new user account
  */
-export const signupService = async (fullName, email, password) => {
+export const signupService = async (fullName, email, password, requestedRole = "user") => {
     // Validation
     if (!fullName || !email || !password) {
         throw new AppError("All fields are required", 400);
@@ -21,6 +42,10 @@ export const signupService = async (fullName, email, password) => {
 
     if (!EMAIL_REGEX.test(email)) {
         throw new AppError("Invalid email format", 400);
+    }
+
+    if (requestedRole === "admin" && !isAdminEmail(email)) {
+        throw new AppError("This email is not allowed to create an admin account", 403);
     }
 
     // Check if user exists
@@ -38,22 +63,18 @@ export const signupService = async (fullName, email, password) => {
         fullName,
         email,
         password: hashedPassword,
+        role: requestedRole === "admin" || isAdminEmail(email) ? "admin" : "user",
     });
 
     const savedUser = await newUser.save();
 
-    return {
-        _id: savedUser._id,
-        fullName: savedUser.fullName,
-        email: savedUser.email,
-        profilePic: savedUser.profilePic,
-    };
+    return publicUser(savedUser);
 };
 
 /**
  * Authenticate a user
  */
-export const loginService = async (email, password) => {
+export const loginService = async (email, password, expectedRole = "user") => {
     if (!email || !password) {
         throw new AppError("Email and password are required", 400);
     }
@@ -68,12 +89,20 @@ export const loginService = async (email, password) => {
         throw new AppError("Invalid credentials", 400);
     }
 
-    return {
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        profilePic: user.profilePic,
-    };
+    if (isAdminEmail(user.email) && user.role !== "admin") {
+        user.role = "admin";
+        await user.save();
+    }
+
+    if (expectedRole === "admin" && user.role !== "admin") {
+        throw new AppError("This account does not have admin access", 403);
+    }
+
+    if (user.isSuspended && user.role !== "admin") {
+        throw new AppError("Your account has been suspended", 403);
+    }
+
+    return publicUser(user);
 };
 
 /**

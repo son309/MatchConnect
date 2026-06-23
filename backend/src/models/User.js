@@ -31,6 +31,49 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
+    },
+    isSuspended: {
+        type: Boolean,
+        default: false,
+    },
+    suspendedAt: {
+        type: Date,
+        default: null,
+    },
+    suspendedReason: {
+        type: String,
+        default: "",
+        maxlength: 300,
+    },
+    profileVerification: {
+        status: {
+            type: String,
+            enum: ["none", "pending", "verified", "rejected"],
+            default: "none",
+        },
+        requestedAt: {
+            type: Date,
+            default: null,
+        },
+        reviewedAt: {
+            type: Date,
+            default: null,
+        },
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        note: {
+            type: String,
+            default: "",
+            maxlength: 300,
+        },
+    },
     friends: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

@@ -13,6 +13,10 @@ export const protectRoute = async (req, res, next) => {
         const user = await User.findById(decoded.userId).select("-password");
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        if (user.isSuspended && user.role !== "admin") {
+            return res.status(403).json({ message: "Your account has been suspended" });
+        }
+
         req.user = user;
         next()
     } catch (error) {
@@ -22,3 +26,10 @@ export const protectRoute = async (req, res, next) => {
     }
 
 }
+export const requireAdmin = (req, res, next) => {
+    if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+    }
+
+    next();
+};

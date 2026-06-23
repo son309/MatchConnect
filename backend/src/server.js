@@ -10,6 +10,8 @@ import callRoutes from "./routes/call.route.js";
 import groupRoutes from "./routes/group.route.js";
 import blockRoutes from "./routes/block.route.js";
 import datingRoutes from "./routes/dating.route.js";
+import reportRoutes from "./routes/report.route.js";
+import adminRoutes from "./routes/admin.route.js";
 import { connectDB } from "./lib/db.js";
 import { ENV } from "./lib/env.js";
 import { app, server } from "./lib/socket.js";
@@ -34,6 +36,8 @@ app.use("/api/calls", callRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/block", blockRoutes);
 app.use("/api/dating", datingRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/admin", adminRoutes);
 
 // make ready for deployment
 if (ENV.NODE_ENV === "production") {
@@ -48,3 +52,4 @@ server.listen(PORT, () => {
   console.log("Server running on port: " + PORT);
   connectDB();
 });
+

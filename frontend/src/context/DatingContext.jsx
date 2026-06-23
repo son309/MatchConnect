@@ -47,12 +47,15 @@ export const DatingProvider = ({ children }) => {
     }
   }, []);
 
-  const getDiscoverProfiles = useCallback(async () => {
+  const getDiscoverProfiles = useCallback(async (filters = {}) => {
     if (!authUser) return [];
 
     setIsDatingLoading(true);
     try {
-      const res = await axiosInstance.get("/dating/discover");
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value !== "" && value !== null && value !== undefined)
+      );
+      const res = await axiosInstance.get("/dating/discover", { params });
       const profiles = Array.isArray(res.data) ? res.data : [];
       setDiscoverProfiles(profiles);
       return profiles;

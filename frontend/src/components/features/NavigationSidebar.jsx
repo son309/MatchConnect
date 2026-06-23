@@ -1,4 +1,4 @@
-import { Compass, Heart, LogOut, MessageCircle, Settings, User } from "lucide-react";
+import { Compass, Heart, LogOut, MessageCircle, Settings, ShieldCheck, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
 import { useDating } from "../../context/DatingContext";
@@ -40,7 +40,7 @@ const NavItem = ({ icon: Icon, to, onClick, defaultActive = false, badgeCount = 
 };
 
 export default function NavigationSidebar() {
-  const { logout } = useAuth();
+  const { authUser, logout } = useAuth();
   const { homeStats } = useChat();
   const { likedYou } = useDating();
   const navigate = useNavigate();
@@ -79,6 +79,7 @@ export default function NavigationSidebar() {
         <NavItem icon={Heart} to="/chat/dating?tab=liked-you" badgeCount={likedYouCount} />
         <NavItem icon={MessageCircle} to="/chat/matches" badgeCount={unreadMatchesCount} />
         <NavItem icon={User} to="/chat/profile" />
+        {authUser?.role === "admin" && <NavItem icon={ShieldCheck} to="/chat/admin" />}
       </div>
 
       <div className="hidden md:flex flex-1"></div>

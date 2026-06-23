@@ -8,6 +8,8 @@ import {
   MapPin,
   Save,
   Star,
+  ShieldCheck,
+  ShieldQuestion,
   Tags,
   Trash2,
   User,
@@ -72,8 +74,30 @@ function makePhotoItem(url, index = 0) {
   };
 }
 
+function getProfileCompletion({ authUser, formData, datingPhotos, previewUrl }) {
+  const checks = [
+    { label: "Avatar", done: Boolean(previewUrl || authUser?.profilePic) },
+    { label: "Dating photos", done: datingPhotos.length > 0 },
+    { label: "Full name", done: Boolean(formData.fullName.trim()) },
+    { label: "Age", done: Boolean(formData.age) },
+    { label: "Gender", done: Boolean(formData.gender) },
+    { label: "City", done: Boolean(formData.city.trim()) },
+    { label: "Intentions", done: Boolean(formData.intentions) },
+    { label: "Bio", done: Boolean(formData.bio.trim()) },
+    { label: "Interests", done: Boolean(formData.interestsText.trim()) },
+  ];
+  const completed = checks.filter((item) => item.done).length;
+
+  return {
+    checks,
+    completed,
+    percent: Math.round((completed / checks.length) * 100),
+    missing: checks.filter((item) => !item.done).map((item) => item.label),
+  };
+}
+
 export default function ProfileSettings() {
-  const { authUser, isUpdatingProfile, updateProfile, setAuthUser } = useAuth();
+  const { authUser, isUpdatingProfile, updateProfile, setAuthUser, requestProfileVerification } = useAuth();
   const { isDatingActionLoading, updateDatingProfile } = useDating();
 
   const [formData, setFormData] = useState({
@@ -197,6 +221,9 @@ export default function ProfileSettings() {
     });
   };
 
+  const handleRequestVerification = async () => {
+    await requestProfileVerification();
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -249,6 +276,12 @@ export default function ProfileSettings() {
   }
 
   const isSaving = isUpdatingProfile || isDatingActionLoading;
+  const profileCompletion = getProfileCompletion({
+    authUser,
+    formData,
+    datingPhotos,
+    previewUrl,
+  });
 
   return (
     <div className="flex h-full flex-col bg-white md:bg-transparent">
@@ -261,7 +294,76 @@ export default function ProfileSettings() {
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
         <form onSubmit={handleSubmit} className="max-w-3xl space-y-8">
+          <section className="rounded-lg border border-pink-100 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-gray-900">Profile strength</h4>
+                <p className="mt-1 text-sm text-gray-500">
+                  Complete your dating profile to appear more reliable in Discover.
+                </p>
+              </div>
+              <span className="rounded-lg bg-pink-50 px-3 py-1 text-sm font-bold text-pink-600">
+                {profileCompletion.percent}%
+              </span>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-pink-500 transition-all"
+                style={{ width: `${profileCompletion.percent}%` }}
+              />
+            </div>
+            {profileCompletion.missing.length > 0 && (
+              <p className="mt-3 text-xs text-gray-500">
+                Missing: {profileCompletion.missing.slice(0, 4).join(", ")}
+                {profileCompletion.missing.length > 4 ? "..." : ""}
+              </p>
+            )}
+          </section>
+          <section className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${authUser.profileVerification?.status === "verified" ? "bg-emerald-50 text-emerald-600" : "bg-pink-50 text-pink-500"}`}>
+                  {authUser.profileVerification?.status === "verified" ? <ShieldCheck className="h-5 w-5" /> : <ShieldQuestion className="h-5 w-5" />}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">Profile verification</h4>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {authUser.profileVerification?.status === "verified"
+                      ? "Your dating profile has been verified by an admin."
+                      : authUser.profileVerification?.status === "pending"
+                        ? "Your verification request is waiting for admin review."
+                        : authUser.profileVerification?.status === "rejected"
+                          ? authUser.profileVerification?.note || "Your previous request was rejected. Please update your profile and request again."
+                          : "Request admin verification after completing your dating profile."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <span className={`rounded-lg px-3 py-1 text-xs font-bold uppercase ${
+                  authUser.profileVerification?.status === "verified"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : authUser.profileVerification?.status === "pending"
+                      ? "bg-amber-50 text-amber-600"
+                      : authUser.profileVerification?.status === "rejected"
+                        ? "bg-red-50 text-red-600"
+                        : "bg-gray-100 text-gray-500"
+                }`}>
+                  {authUser.profileVerification?.status || "none"}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRequestVerification}
+                  disabled={isSaving || authUser.profileVerification?.status === "pending" || authUser.profileVerification?.status === "verified"}
+                  className="rounded-lg bg-pink-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Request verification
+                </button>
+              </div>
+            </div>
+          </section>
+
           <div className="space-y-6 border-b border-gray-100 pb-6">
+
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
               <button
                 type="button"

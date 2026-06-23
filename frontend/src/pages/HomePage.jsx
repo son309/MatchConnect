@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircleIcon, MailIcon, PhoneIcon, MapPinIcon, FacebookIcon, TwitterIcon, LinkedinIcon } from 'lucide-react';
+import { HeartIcon, MailIcon, PhoneIcon, MapPinIcon, FacebookIcon, TwitterIcon, LinkedinIcon } from 'lucide-react';
 import { useState } from 'react';
 // Navbar
 function Navbar() {
@@ -10,8 +10,8 @@ function Navbar() {
     <nav className="w-full bg-white shadow p-4 flex justify-between items-center sticky top-0 z-40">
       {/* Logo */}
       <Link to="/" className="flex items-center gap-2 text-xl md:text-2xl font-bold text-pink-400">
-        <MessageCircleIcon className="w-8 h-8" />
-        <span>ChatWeb</span>
+        <HeartIcon className="w-8 h-8" />
+        <span>MatchConnect</span>
       </Link>
 
       {/* Menu Mobile Button */}
@@ -64,20 +64,20 @@ export default function HomePage() {
         <section className="h-[80vh] flex flex-col items-center justify-center text-center p-8
                      bg-[url('/sample.png')] bg-cover bg-center bg-gray-700 bg-blend-multiply">
 
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">Welcome to ChatWebsite</h1>
-            <p className="text-xl text-gray-200 mb-8">A modern way to connect with your friends online!</p>
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">Welcome to MatchConnect</h1>
+            <p className="text-xl text-gray-200 mb-8">Discover new profiles, match with people you like, and start real conversations.</p>
             <Link to="/signup" className="px-8 py-3 bg-pink-400 text-white text-lg font-semibold rounded hover:bg-pink-500">Get Started</Link>
         </section>
 
         {/* About Section */}
         <section className="bg-white py-20 px-8">
           <div id="about" className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">About ChatWebsite</h2>
+            <h2 className="text-4xl font-bold text-gray-800 mb-6">About MatchConnect</h2>
             <p className="text-lg text-gray-600 mb-4">
-              ChatWebsite is a fast, secure, and modern chat platform.
+              MatchConnect is a modern dating platform that helps users build meaningful connections through profiles, likes, and mutual matches.
             </p>
             <p className="text-lg text-gray-600">
-              User-friendly interface allows you to easily send messages, share images, and stay connected with everyone.
+              After matching, users can chat, share photos, and make voice or video calls in a private and friendly experience.
             </p>
           </div>
         </section>
@@ -126,10 +126,11 @@ export default function HomePage() {
 
           {/* Footer */}
           <div className="text-center mt-10 border-t border-gray-700 pt-6">
-            <p>&copy; 2025 ChatWebsite. All rights reserved.</p>
+            <p>&copy; 2025 MatchConnect. All rights reserved.</p>
           </div>
         </section>
       </main>
     </div>
   );
 }
+

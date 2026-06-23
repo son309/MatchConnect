@@ -11,10 +11,10 @@ import {
 } from "../services/auth.service.js";
 
 export const signup = async (req, res) => {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, password, requestedRole } = req.body;
 
     try {
-        const user = await signupService(fullName, email, password);
+        const user = await signupService(fullName, email, password, requestedRole);
 
         // Generate token after successful signup
         generateToken(user._id, res);
@@ -34,11 +34,11 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, expectedRole } = req.body;
 
 
     try {
-        const user = await loginService(email, password);
+        const user = await loginService(email, password, expectedRole);
 
         // Generate token after successful login
         generateToken(user._id, res);
@@ -117,5 +117,41 @@ export const resetPassword = async (req, res) => {
         res.status(200).json(result);
     } catch (error) {
         res.status(error.statusCode || 500).json({ message: error.message });
+    }
+};
+export const requestProfileVerification = async (req, res) => {
+    try {
+        const user = await getUserByIdService(req.user._id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const profile = user.datingProfile || {};
+        const hasPhoto = Array.isArray(profile.photos) && profile.photos.some(Boolean);
+        const hasBio = Boolean(String(profile.bio || "").trim());
+        const hasBasicInfo = Boolean(profile.age && profile.gender && String(profile.city || "").trim());
+
+        if (!hasPhoto || !hasBio || !hasBasicInfo) {
+            return res.status(400).json({
+                message: "Please complete dating photos, bio, age, gender, and city before requesting verification",
+            });
+        }
+
+        if (user.profileVerification?.status === "verified") {
+            return res.status(400).json({ message: "Profile is already verified" });
+        }
+
+        user.profileVerification = {
+            status: "pending",
+            requestedAt: new Date(),
+            reviewedAt: null,
+            reviewedBy: null,
+            note: "",
+        };
+
+        await user.save();
+
+        res.status(200).json(user);
+    } catch (error) {
+        console.error("requestProfileVerification:", error);
+        res.status(error.statusCode || 500).json({ message: error.message || "Server error" });
     }
 };
