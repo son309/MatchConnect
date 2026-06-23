@@ -48,6 +48,10 @@ export const signupService = async (fullName, email, password, requestedRole = "
         throw new AppError("This email is not allowed to create an admin account", 403);
     }
 
+    if (requestedRole === "user" && isAdminEmail(email)) {
+        throw new AppError("This email is reserved for admin registration. Please choose Admin.", 403);
+    }
+
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -63,7 +67,7 @@ export const signupService = async (fullName, email, password, requestedRole = "
         fullName,
         email,
         password: hashedPassword,
-        role: requestedRole === "admin" || isAdminEmail(email) ? "admin" : "user",
+        role: requestedRole === "admin" ? "admin" : "user",
     });
 
     const savedUser = await newUser.save();
@@ -96,6 +100,10 @@ export const loginService = async (email, password, expectedRole = "user") => {
 
     if (expectedRole === "admin" && user.role !== "admin") {
         throw new AppError("This account does not have admin access", 403);
+    }
+
+    if (expectedRole === "user" && user.role === "admin") {
+        throw new AppError("This is an admin account. Please choose Admin login.", 403);
     }
 
     if (user.isSuspended && user.role !== "admin") {
