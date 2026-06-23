@@ -1,5 +1,5 @@
 import { sendWelcomeEmail,sendOTPEmail } from "../emails/emailHandlers.js";
-import { generateToken } from "../lib/utils.js";
+import { generateToken, getAuthCookieOptions } from "../lib/utils.js";
 import { ENV } from "../lib/env.js";
 import {
     signupService,
@@ -51,7 +51,7 @@ export const login = async (req, res) => {
 };
 
 export const logout = (_, res) => {
-    res.cookie("jwt", "", { maxAge: 0 });
+    res.cookie("jwt", "", { ...getAuthCookieOptions(), maxAge: 0 });
     res.status(200).json({ message: "Logged out successfully" });
 };
 
