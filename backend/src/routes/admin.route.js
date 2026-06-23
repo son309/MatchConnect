@@ -8,6 +8,8 @@ import {
   updateReportStatus,
   updateUserModeration,
   updateProfileVerification,
+  deleteUserPermanently,
+  removeUserDatingPhoto,
 } from "../controllers/admin.controller.js";
 
 const router = express.Router();
@@ -20,5 +22,7 @@ router.patch("/reports/:reportId", updateReportStatus);
 router.get("/users", getAdminUsers);
 router.patch("/users/:userId/moderation", updateUserModeration);
 router.patch("/users/:userId/verification", updateProfileVerification);
+router.delete("/users/:userId/dating-photos/:photoIndex", removeUserDatingPhoto);
+router.delete("/users/:userId", deleteUserPermanently);
 
 export default router;

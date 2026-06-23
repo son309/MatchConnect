@@ -10,11 +10,11 @@ import {
     updateDatingProfile,
 } from "../controllers/dating.controller.js";
 import { arcjetProtection } from "../middleware/arcjet.middleware.js";
-import { protectRoute } from "../middleware/auth.middleware.js";
+import { protectRoute, requireMember } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-router.use(arcjetProtection, protectRoute);
+router.use(arcjetProtection, protectRoute, requireMember);
 
 router.get("/profile", getDatingProfile);
 router.put("/profile", updateDatingProfile);

@@ -44,12 +44,15 @@ export default function NavigationSidebar() {
   const { homeStats } = useChat();
   const { likedYou } = useDating();
   const navigate = useNavigate();
+  const isAdmin = authUser?.role === "admin";
 
-  const likedYouCount = likedYou.length;
-  const unreadMatchesCount = (homeStats?.chats || []).reduce((total, chat) => {
-    if (!chat.isDatingMatch && !chat.isMatch) return total;
-    return total + (chat.unreadCount || 0);
-  }, 0);
+  const likedYouCount = isAdmin ? 0 : likedYou.length;
+  const unreadMatchesCount = isAdmin
+    ? 0
+    : (homeStats?.chats || []).reduce((total, chat) => {
+        if (!chat.isDatingMatch && !chat.isMatch) return total;
+        return total + (chat.unreadCount || 0);
+      }, 0);
 
   const handleLogout = async () => {
     await logout();
@@ -75,11 +78,16 @@ export default function NavigationSidebar() {
       `}
     >
       <div className="flex flex-row md:flex-col gap-2 md:gap-4 items-center">
-        <NavItem icon={Compass} to="/chat/dating?tab=discover" defaultActive />
-        <NavItem icon={Heart} to="/chat/dating?tab=liked-you" badgeCount={likedYouCount} />
-        <NavItem icon={MessageCircle} to="/chat/matches" badgeCount={unreadMatchesCount} />
-        <NavItem icon={User} to="/chat/profile" />
-        {authUser?.role === "admin" && <NavItem icon={ShieldCheck} to="/chat/admin" />}
+        {isAdmin ? (
+          <NavItem icon={ShieldCheck} to="/chat/admin" defaultActive />
+        ) : (
+          <>
+            <NavItem icon={Compass} to="/chat/dating?tab=discover" defaultActive />
+            <NavItem icon={Heart} to="/chat/dating?tab=liked-you" badgeCount={likedYouCount} />
+            <NavItem icon={MessageCircle} to="/chat/matches" badgeCount={unreadMatchesCount} />
+            <NavItem icon={User} to="/chat/profile" />
+          </>
+        )}
       </div>
 
       <div className="hidden md:flex flex-1"></div>

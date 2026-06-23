@@ -5,10 +5,12 @@ import {
   CheckCircle2,
   Clock3,
   Flag,
+  ImageOff,
   RefreshCw,
   Search,
   ShieldCheck,
   ShieldOff,
+  Trash2,
   Users,
 } from "lucide-react";
 import { axiosInstance } from "../../../lib/axios";
@@ -149,6 +151,47 @@ export default function AdminDashboard() {
       fetchAdminData();
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not update verification");
+    } finally {
+      setActionId(null);
+    }
+  };
+
+
+  const removeUserPhoto = async (user, photoIndex) => {
+    if (!window.confirm("Remove this dating photo as violating content?")) return;
+
+    setActionId(`photo-${user._id}-${photoIndex}`);
+    try {
+      const res = await axiosInstance.delete(`/admin/users/${user._id}/dating-photos/${photoIndex}`);
+      setUsers((items) => items.map((item) => (item._id === user._id ? res.data : item)));
+      toast.success("Photo removed");
+      fetchAdminData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not remove photo");
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const deleteUserPermanently = async (user) => {
+    const confirmed = window.confirm(
+      `Permanently delete ${user.fullName || user.email}? This will remove the user, reports, matches, calls, and messages.`
+    );
+    if (!confirmed) return;
+
+    setActionId(`delete-${user._id}`);
+    try {
+      await axiosInstance.delete(`/admin/users/${user._id}`);
+      setUsers((items) => items.filter((item) => item._id !== user._id));
+      setReports((items) =>
+        items.filter(
+          (report) => report.reporter?._id !== user._id && report.reportedUser?._id !== user._id
+        )
+      );
+      toast.success("User permanently deleted");
+      fetchAdminData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not delete user");
     } finally {
       setActionId(null);
     }
@@ -345,6 +388,7 @@ export default function AdminDashboard() {
               ) : (
                 users.map((user) => {
                   const verificationStatus = user.profileVerification?.status || "none";
+                  const datingPhotos = Array.isArray(user.datingProfile?.photos) ? user.datingProfile.photos.filter(Boolean) : [];
                   const verificationClass =
                     verificationStatus === "verified"
                       ? "bg-emerald-50 text-emerald-600"
@@ -373,6 +417,27 @@ export default function AdminDashboard() {
                         </div>
                         <p className="truncate text-sm text-gray-500">{user.email}</p>
                         {user.suspendedReason && <p className="text-xs text-red-500">{user.suspendedReason}</p>}
+                        {datingPhotos.length > 0 && (
+                          <div className="mt-3">
+                            <p className="mb-2 text-xs font-semibold text-gray-400">Dating photos</p>
+                            <div className="flex flex-wrap gap-2">
+                              {datingPhotos.map((photo, photoIndex) => (
+                                <div key={`${photo}-${photoIndex}`} className="group relative h-16 w-12 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+                                  <img src={photo} alt="Dating profile" className="h-full w-full object-cover" />
+                                  <button
+                                    type="button"
+                                    disabled={actionId === `photo-${user._id}-${photoIndex}`}
+                                    onClick={() => removeUserPhoto(user, photoIndex)}
+                                    className="absolute inset-0 hidden items-center justify-center bg-red-500/80 text-white transition group-hover:flex disabled:opacity-60"
+                                    title="Remove violating photo"
+                                  >
+                                    <ImageOff size={16} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -398,6 +463,17 @@ export default function AdminDashboard() {
                           className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-3 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-200 disabled:opacity-60"
                         >
                           Reject
+                        </button>
+                      )}
+                      {user.role !== "admin" && (
+                        <button
+                          disabled={actionId === `delete-${user._id}`}
+                          onClick={() => deleteUserPermanently(user)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-60"
+                          title="Delete account permanently"
+                        >
+                          <Trash2 size={16} />
+                          Delete
                         </button>
                       )}
                       {user.role !== "admin" && (

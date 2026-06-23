@@ -25,7 +25,7 @@ export const DatingProvider = ({ children }) => {
   const { socket } = useSocket();
 
   const getDatingProfile = useCallback(async () => {
-    if (!authUser) return null;
+    if (!authUser || authUser.role === "admin") return null;
 
     const res = await axiosInstance.get("/dating/profile");
     setDatingProfile(res.data);
@@ -48,7 +48,7 @@ export const DatingProvider = ({ children }) => {
   }, []);
 
   const getDiscoverProfiles = useCallback(async (filters = {}) => {
-    if (!authUser) return [];
+    if (!authUser || authUser.role === "admin") return [];
 
     setIsDatingLoading(true);
     try {
@@ -68,7 +68,7 @@ export const DatingProvider = ({ children }) => {
   }, [authUser]);
 
   const getMatches = useCallback(async () => {
-    if (!authUser) return [];
+    if (!authUser || authUser.role === "admin") return [];
 
     try {
       const res = await axiosInstance.get("/dating/matches");
@@ -82,7 +82,7 @@ export const DatingProvider = ({ children }) => {
   }, [authUser]);
 
   const getLikedYou = useCallback(async () => {
-    if (!authUser) return [];
+    if (!authUser || authUser.role === "admin") return [];
 
     try {
       const res = await axiosInstance.get("/dating/liked-you");
@@ -160,7 +160,7 @@ export const DatingProvider = ({ children }) => {
   }, [getDiscoverProfiles]);
 
   useEffect(() => {
-    if (!authUser) return;
+    if (!authUser || authUser.role === "admin") return;
 
     getDatingProfile();
     getDiscoverProfiles();
