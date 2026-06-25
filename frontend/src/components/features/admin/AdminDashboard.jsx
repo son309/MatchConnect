@@ -6,6 +6,7 @@ import {
   Clock3,
   Flag,
   ImageOff,
+  Phone,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -416,6 +417,11 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                         <p className="truncate text-sm text-gray-500">{user.email}</p>
+                        {user.phone && (
+                          <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-gray-400">
+                            <Phone size={13} /> {user.phone}
+                          </p>
+                        )}
                         {user.suspendedReason && <p className="text-xs text-red-500">{user.suspendedReason}</p>}
                         {datingPhotos.length > 0 && (
                           <div className="mt-3">

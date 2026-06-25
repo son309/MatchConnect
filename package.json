@@ -1,5 +1,5 @@
 {
-  "name": "project-it4409",
+  "name": "matchconnect",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -13,15 +13,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/peitel2799/IT4409.git"
+    "url": "git+https://github.com/son309/MatchConnect.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/peitel2799/IT4409/issues"
+    "url": "https://github.com/son309/MatchConnect/issues"
   },
-  "homepage": "https://github.com/peitel2799/IT4409#readme",
+  "homepage": "https://github.com/son309/MatchConnect#readme",
   "dependencies": {
     "emoji-picker-react": "^4.16.1",
     "socket.io-client": "^4.8.1"

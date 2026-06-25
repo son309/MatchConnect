@@ -10,6 +10,7 @@ const sanitizeUser = (user) => ({
   _id: user._id,
   fullName: user.fullName,
   email: user.email,
+  phone: user.phone || "",
   profilePic: user.profilePic,
   role: user.role,
   isSuspended: user.isSuspended,
@@ -98,6 +99,7 @@ export const getAdminUsers = async (req, res) => {
           $or: [
             { fullName: { $regex: normalizedSearch, $options: "i" } },
             { email: { $regex: normalizedSearch, $options: "i" } },
+            { phone: { $regex: normalizedSearch, $options: "i" } },
           ],
         }
       : {};

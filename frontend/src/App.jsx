@@ -19,6 +19,7 @@ import SentRequests from "./components/features/friends/SentRequests";
 import ProfileSettings from "./components/features/settings/ProfileSettings";
 import ChangePassword from "./components/features/settings/ChangePassword";
 import ActivitySettings from "./components/features/settings/ActivitySettings";
+import AccountSettings from "./components/features/settings/AccountSettings";
 import AdminDashboard from "./components/features/admin/AdminDashboard";
 function App() {
   const { authUser, isCheckingAuth } = useAuth();
@@ -76,6 +77,7 @@ function App() {
             <Route path="activity" element={<ActivitySettings />} />
             <Route path="profile" element={<Navigate to="/chat/profile" replace />} />
             <Route path="password" element={<ChangePassword />} />
+            <Route path="account" element={<AccountSettings />} />
           </Route>
         </Route>
       </Routes>

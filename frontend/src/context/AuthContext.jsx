@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
     const [isSendingOTP, setIsSendingOTP] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
     useEffect(() => {
         checkAuth();
@@ -114,6 +115,22 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+
+    const deleteAccount = async (currentPassword) => {
+        setIsDeletingAccount(true);
+        try {
+            await axiosInstance.delete("/auth/me", { data: { currentPassword } });
+            setAuthUser(null);
+            toast.success("Account deleted successfully");
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete account");
+            throw error;
+        } finally {
+            setIsDeletingAccount(false);
+        }
+    };
+
     const requestProfileVerification = async () => {
         try {
             const res = await axiosInstance.post("/auth/request-verification");
@@ -143,6 +160,8 @@ export const AuthProvider = ({ children }) => {
         forgotPassword,
         resetPassword,
         requestProfileVerification,
+        deleteAccount,
+        isDeletingAccount,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

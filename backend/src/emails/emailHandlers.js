@@ -6,9 +6,9 @@
 // export const sendWelcomeEmail = async (email, name, clientURL) => {
 //   try {
 //     await transporter.sendMail({
-//       from: `"Team 24 of IT4409" <${ENV.EMAIL_USER}>`, 
+//       from: `"MatchConnect Team" <${ENV.EMAIL_USER}>`, 
 //       to: email,
-//       subject: "Welcome to ChatWeb",
+//       subject: "Welcome to MatchConnect",
 //       html: createWelcomeEmailTemplate(name, clientURL), 
 //     });
 //     console.log("Welcome Email has been successfully sent.");
@@ -20,7 +20,7 @@
 // export const sendOTPEmail = async (email, name, otp) => {
 //   try {
 //     await transporter.sendMail({
-//       from: `"Team 24 of IT4409" <${ENV.EMAIL_USER}>`,
+//       from: `"MatchConnect Team" <${ENV.EMAIL_USER}>`,
 //       to: email,
 //       subject: "OTP code to reset your password",
 //       html: createOTPEmailTemplate(name, otp),
@@ -46,7 +46,7 @@ export const sendWelcomeEmail = async (email, name, clientURL) => {
     const { data, error } = await resend.emails.send({
       from: SENDER_EMAIL, 
       to: [email],
-      subject: "Welcome to ChatWeb",
+      subject: "Welcome to MatchConnect",
       html: createWelcomeEmailTemplate(name, clientURL), 
     });
 

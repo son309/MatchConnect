@@ -7,7 +7,8 @@ import {
     updateProfileService,
     getUserByIdService,
     changePasswordService,
-    forgotPasswordService, resetPasswordService
+    forgotPasswordService, resetPasswordService,
+    deleteAccountService
 } from "../services/auth.service.js";
 
 export const signup = async (req, res) => {
@@ -58,10 +59,10 @@ export const logout = (_, res) => {
 
 export const updateProfile = async (req, res) => {
     try {
-        const { profilePic, fullName } = req.body;
+        const { profilePic, fullName, phone } = req.body;
         const userId = req.user._id;
 
-        const updatedUser = await updateProfileService(userId, { fullName, profilePic });
+        const updatedUser = await updateProfileService(userId, { fullName, phone, profilePic });
         res.status(200).json(updatedUser);
     } catch (error) {
         console.error("updateProfile:", error);
@@ -93,6 +94,19 @@ export const changePassword = async (req, res) => {
     }
 };
 
+
+
+export const deleteMyAccount = async (req, res) => {
+    try {
+        const { currentPassword } = req.body;
+        const result = await deleteAccountService(req.user._id, currentPassword);
+        res.cookie("jwt", "", { ...getAuthCookieOptions(), maxAge: 0 });
+        res.status(200).json(result);
+    } catch (error) {
+        console.error("deleteMyAccount:", error);
+        res.status(error.statusCode || 500).json({ message: error.message || "Server error" });
+    }
+};
 
 export const forgotPassword = async (req, res) => {
     try {

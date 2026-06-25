@@ -1,6 +1,12 @@
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 import User from "../models/User.js";
+import Call from "../models/Call.js";
+import DatingAction from "../models/DatingAction.js";
+import DatingMatch from "../models/DatingMatch.js";
+import Group from "../models/Group.js";
+import Message from "../models/Message.js";
+import Report from "../models/Report.js";
 import { ENV } from "../lib/env.js";
 import { AppError } from "./AppError.js";
 
@@ -16,10 +22,16 @@ const ADMIN_EMAILS = new Set(
 
 const isAdminEmail = (email) => ADMIN_EMAILS.has(String(email || "").toLowerCase());
 
+const normalizePhone = (phone) => String(phone || "")
+    .replace(/[^0-9+\-\s()]/g, "")
+    .trim()
+    .slice(0, 30);
+
 const publicUser = (user) => ({
     _id: user._id,
     fullName: user.fullName,
     email: user.email,
+    phone: user.phone || "",
     profilePic: user.profilePic,
     role: user.role,
     isSuspended: user.isSuspended,
@@ -116,9 +128,10 @@ export const loginService = async (email, password, expectedRole = "user") => {
 /**
  * Update user profile picture
  */
-export const updateProfileService = async (userId, { fullName, profilePic }) => {
+export const updateProfileService = async (userId, { fullName, phone, profilePic }) => {
     const updateData = {};
     if (fullName) updateData.fullName = fullName;
+    if (phone !== undefined) updateData.phone = normalizePhone(phone);
 
     if (profilePic) {
         try {
@@ -146,6 +159,53 @@ export const updateProfileService = async (userId, { fullName, profilePic }) => 
 export const getUserByIdService = async (userId) => {
     const user = await User.findById(userId).select("-password");
     return user;
+};
+
+
+export const deleteAccountService = async (userId, currentPassword) => {
+    if (!currentPassword) {
+        throw new AppError("Current password is required", 400);
+    }
+
+    const user = await User.findById(userId).select("password role");
+    if (!user) {
+        throw new AppError("User not found", 404);
+    }
+
+    if (user.role === "admin") {
+        throw new AppError("Admin accounts cannot be deleted from user settings", 403);
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordCorrect) {
+        throw new AppError("Current password is incorrect", 400);
+    }
+
+    await Promise.all([
+        Message.deleteMany({ $or: [{ senderId: userId }, { receiverId: userId }] }),
+        DatingAction.deleteMany({ $or: [{ from: userId }, { to: userId }] }),
+        DatingMatch.deleteMany({ $or: [{ userA: userId }, { userB: userId }] }),
+        Call.deleteMany({ $or: [{ caller: userId }, { receiver: userId }] }),
+        Report.deleteMany({ $or: [{ reporter: userId }, { reportedUser: userId }] }),
+        User.updateMany(
+            {},
+            {
+                $pull: {
+                    friends: userId,
+                    friendRequests: userId,
+                    sentFriendRequests: userId,
+                    blockedUsers: userId,
+                    spammedUsers: userId,
+                },
+            }
+        ),
+        Group.updateMany({}, { $pull: { members: userId, admins: userId } }),
+    ]);
+
+    await Group.deleteMany({ members: { $size: 0 } });
+    await User.findByIdAndDelete(userId);
+
+    return { message: "Account deleted successfully" };
 };
 
 /**

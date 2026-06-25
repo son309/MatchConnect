@@ -6,6 +6,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Phone,
   Save,
   Star,
   ShieldCheck,
@@ -102,6 +103,7 @@ export default function ProfileSettings() {
 
   const [formData, setFormData] = useState({
     fullName: "",
+    phone: "",
     age: "",
     gender: "",
     interestedIn: "everyone",
@@ -123,6 +125,7 @@ export default function ProfileSettings() {
     const dating = authUser.datingProfile || {};
     setFormData({
       fullName: authUser.fullName || "",
+      phone: authUser.phone || "",
       age: dating.age || "",
       gender: dating.gender || "",
       interestedIn: dating.interestedIn || "everyone",
@@ -227,7 +230,7 @@ export default function ProfileSettings() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const profileUpdate = { fullName: formData.fullName.trim() };
+    const profileUpdate = { fullName: formData.fullName.trim(), phone: formData.phone.trim() };
     if (selectedFile) {
       profileUpdate.profilePic = await compressImageFile(selectedFile, AVATAR_IMAGE_SIZE);
     }
@@ -516,6 +519,23 @@ export default function ProfileSettings() {
                     value={authUser.email}
                     disabled
                     className="w-full cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-400"
+                  />
+                </div>
+              </label>
+
+              <label className="block md:col-span-2">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Phone Number
+                </span>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                    placeholder="Enter your phone number"
+                    maxLength={30}
                   />
                 </div>
               </label>

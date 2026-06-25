@@ -1,5 +1,5 @@
 import express from "express";
-import { signup, login, logout, updateProfile, changePassword , forgotPassword, resetPassword, requestProfileVerification } from "../controllers/auth.controller.js";
+import { signup, login, logout, updateProfile, changePassword , forgotPassword, resetPassword, requestProfileVerification, deleteMyAccount } from "../controllers/auth.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { arcjetProtection } from "../middleware/arcjet.middleware.js";
 
@@ -13,6 +13,7 @@ router.post("/logout", logout);
 
 router.put("/update-profile", protectRoute, updateProfile);
 router.put("/change-password", protectRoute, changePassword);
+router.delete("/me", protectRoute, deleteMyAccount);
 router.post("/request-verification", protectRoute, requestProfileVerification);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);

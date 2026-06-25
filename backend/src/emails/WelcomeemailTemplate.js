@@ -1,4 +1,4 @@
-export function createWelcomeEmailTemplate(name, clientURL) {
+﻿export function createWelcomeEmailTemplate(name, clientURL) {
   return `
   <!DOCTYPE html>
   <html>
@@ -29,7 +29,7 @@ export function createWelcomeEmailTemplate(name, clientURL) {
           text-align: center;
         ">
           <h2 style="margin: 0; color: #ffffff;">
-            Welcome to IT4409 Messenger
+            Welcome to MatchConnect
           </h2>
         </td>
       </tr>
@@ -42,7 +42,7 @@ export function createWelcomeEmailTemplate(name, clientURL) {
           </p>
 
           <p>
-            Thank you for joining <strong>CHATWEB with team 24</strong>.
+            Thank you for joining <strong>MatchConnect</strong>.
             We are glad to have you here.
           </p>
 
@@ -57,8 +57,8 @@ export function createWelcomeEmailTemplate(name, clientURL) {
             </p>
             <ul style="padding-left: 20px; margin: 0;">
               <li>Updating your profile</li>
-              <li>Finding friends by email</li>
-              <li>Starting your first chat</li>
+              <li>Discovering dating profiles</li>
+              <li>Starting a chat with your matches</li>
             </ul>
           </div>
 
@@ -92,7 +92,7 @@ export function createWelcomeEmailTemplate(name, clientURL) {
           color: #777;
         ">
           <p style="margin: 0;">
-            © 2025 IT4409 Messenger
+            © 2025 MatchConnect
           </p>
           <p style="margin: 5px 0 0;">
             This email was sent from the system
@@ -104,3 +104,4 @@ export function createWelcomeEmailTemplate(name, clientURL) {
   </html>
   `;
 }
+
