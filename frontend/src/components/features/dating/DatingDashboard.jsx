@@ -4,7 +4,6 @@ import {
   Loader2,
   MapPin,
   RefreshCw,
-  SlidersHorizontal,
   ShieldCheck,
   UserRound,
   X,
@@ -323,12 +322,6 @@ export default function DatingDashboard() {
     likeProfile,
     passProfile,
   } = useDating();
-  const [filters, setFilters] = useState({
-    minAge: "",
-    maxAge: "",
-    city: "",
-    intentions: "",
-  });
   const currentProfile = discoverProfiles[0];
   const currentLikedProfile = likedYou[0];
   const pageTitle = activeTab === "liked-you" ? "Liked You" : "Discover";
@@ -347,26 +340,12 @@ export default function DatingDashboard() {
     await likeProfile(user._id);
   };
 
-  const updateFilter = (field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const applyFilters = () => {
-    getDiscoverProfiles(filters);
-  };
-
-  const clearFilters = () => {
-    const emptyFilters = { minAge: "", maxAge: "", city: "", intentions: "" };
-    setFilters(emptyFilters);
-    getDiscoverProfiles(emptyFilters);
-  };
-
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#FAFAFA]">
       <div className="flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4">
         <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
         <button
-          onClick={activeTab === "liked-you" ? getLikedYou : () => getDiscoverProfiles(filters)}
+          onClick={activeTab === "liked-you" ? getLikedYou : () => getDiscoverProfiles()}
           className="rounded-lg border border-gray-200 bg-white p-2.5 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
           title="Refresh"
         >
@@ -377,67 +356,6 @@ export default function DatingDashboard() {
       <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
         {activeTab === "discover" ? (
           <div className="mx-auto max-w-4xl">
-            <div className="mb-4 border border-gray-100 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
-                <SlidersHorizontal className="h-4 w-4 text-pink-500" />
-                <span>Discover filters</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[0.7fr_0.7fr_1fr_1fr_auto_auto]">
-                <input
-                  type="number"
-                  min="18"
-                  max="100"
-                  value={filters.minAge}
-                  onChange={(event) => updateFilter("minAge", event.target.value)}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                  placeholder="Min age"
-                />
-                <input
-                  type="number"
-                  min="18"
-                  max="100"
-                  value={filters.maxAge}
-                  onChange={(event) => updateFilter("maxAge", event.target.value)}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                  placeholder="Max age"
-                />
-                <input
-                  type="text"
-                  value={filters.city}
-                  onChange={(event) => updateFilter("city", event.target.value)}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                  placeholder="City"
-                />
-                <select
-                  value={filters.intentions}
-                  onChange={(event) => updateFilter("intentions", event.target.value)}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                >
-                  <option value="">Any intention</option>
-                  <option value="relationship">Relationship</option>
-                  <option value="casual">Casual</option>
-                  <option value="friends">Friends</option>
-                  <option value="not-sure">Not sure</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={applyFilters}
-                  disabled={isDatingLoading}
-                  className="rounded-lg bg-pink-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-600 disabled:opacity-60"
-                >
-                  Apply
-                </button>
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  disabled={isDatingLoading}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
-                >
-                  Reset
-                </button>
-              </div>
-            </div>
-
             {isDatingLoading ? (
               <div className="flex h-[480px] items-center justify-center bg-white">
                 <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
@@ -456,7 +374,7 @@ export default function DatingDashboard() {
                 <UserRound className="mb-3 h-12 w-12 text-gray-300" />
                 <h2 className="text-lg font-bold text-gray-800">No profiles</h2>
                 <button
-                  onClick={() => getDiscoverProfiles(filters)}
+                  onClick={() => getDiscoverProfiles()}
                   className="mt-4 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-600"
                 >
                   Refresh

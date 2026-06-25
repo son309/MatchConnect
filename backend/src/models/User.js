@@ -137,6 +137,28 @@ const userSchema = new mongoose.Schema({
             enum: ["relationship", "casual", "friends", "not-sure", ""],
             default: "",
         },
+        preferredMinAge: {
+            type: Number,
+            min: 18,
+            max: 100,
+            default: 18,
+        },
+        preferredMaxAge: {
+            type: Number,
+            min: 18,
+            max: 100,
+            default: 60,
+        },
+        preferredCity: {
+            type: String,
+            default: "",
+            maxlength: 80,
+        },
+        preferredIntentions: {
+            type: String,
+            enum: ["relationship", "casual", "friends", "not-sure", ""],
+            default: "",
+        },
         interests: [{
             type: String,
             trim: true,

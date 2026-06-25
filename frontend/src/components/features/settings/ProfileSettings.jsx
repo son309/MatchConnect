@@ -11,6 +11,7 @@ import {
   Star,
   ShieldCheck,
   ShieldQuestion,
+  SlidersHorizontal,
   Tags,
   Trash2,
   User,
@@ -109,6 +110,10 @@ export default function ProfileSettings() {
     interestedIn: "everyone",
     city: "",
     intentions: "",
+    preferredMinAge: 18,
+    preferredMaxAge: 60,
+    preferredCity: "",
+    preferredIntentions: "",
     bio: "",
     interestsText: "",
   });
@@ -131,6 +136,10 @@ export default function ProfileSettings() {
       interestedIn: dating.interestedIn || "everyone",
       city: dating.city || "",
       intentions: dating.intentions || "",
+      preferredMinAge: dating.preferredMinAge || 18,
+      preferredMaxAge: dating.preferredMaxAge || 60,
+      preferredCity: dating.preferredCity || "",
+      preferredIntentions: dating.preferredIntentions || "",
       bio: dating.bio || "",
       interestsText: Array.isArray(dating.interests)
         ? dating.interests.join(", ")
@@ -157,6 +166,20 @@ export default function ProfileSettings() {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAgeRangeChange = (field, value) => {
+    const nextValue = Number(value);
+    setFormData((prev) => {
+      const next = { ...prev, [field]: nextValue };
+      if (field === "preferredMinAge" && nextValue > Number(prev.preferredMaxAge)) {
+        next.preferredMaxAge = nextValue;
+      }
+      if (field === "preferredMaxAge" && nextValue < Number(prev.preferredMinAge)) {
+        next.preferredMinAge = nextValue;
+      }
+      return next;
+    });
   };
 
   const handleFileChange = (e) => {
@@ -249,6 +272,10 @@ export default function ProfileSettings() {
       interestedIn: formData.interestedIn,
       city: formData.city,
       intentions: formData.intentions,
+      preferredMinAge: formData.preferredMinAge,
+      preferredMaxAge: formData.preferredMaxAge,
+      preferredCity: formData.preferredCity,
+      preferredIntentions: formData.preferredIntentions,
       bio: formData.bio,
       photos,
       interests: formData.interestsText
@@ -654,6 +681,85 @@ export default function ProfileSettings() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
                   placeholder="music, coffee, travel"
                 />
+              </label>
+            </div>
+          </section>
+
+
+          <section className="space-y-5 rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-5 w-5 text-pink-500" />
+              <h4 className="text-sm font-bold text-gray-900">Discovery Preferences</h4>
+            </div>
+
+            <div className="rounded-xl bg-pink-50/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Age range</p>
+                  <p className="mt-1 text-xs text-gray-500">Profiles outside this range will be hidden from Discover.</p>
+                </div>
+                <span className="rounded-lg bg-white px-3 py-1 text-sm font-bold text-pink-600 shadow-sm">
+                  {formData.preferredMinAge} - {formData.preferredMaxAge}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-semibold text-gray-500">Minimum age</span>
+                  <input
+                    type="range"
+                    min="18"
+                    max="100"
+                    value={formData.preferredMinAge}
+                    onChange={(e) => handleAgeRangeChange("preferredMinAge", e.target.value)}
+                    className="w-full accent-pink-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-xs font-semibold text-gray-500">Maximum age</span>
+                  <input
+                    type="range"
+                    min="18"
+                    max="100"
+                    value={formData.preferredMaxAge}
+                    onChange={(e) => handleAgeRangeChange("preferredMaxAge", e.target.value)}
+                    className="w-full accent-pink-500"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Preferred City
+                </span>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={formData.preferredCity}
+                    onChange={(e) => handleChange("preferredCity", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                    placeholder="Any city"
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Preferred Intentions
+                </span>
+                <select
+                  value={formData.preferredIntentions}
+                  onChange={(e) => handleChange("preferredIntentions", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="">Any intention</option>
+                  <option value="relationship">Relationship</option>
+                  <option value="casual">Casual</option>
+                  <option value="friends">Friends</option>
+                  <option value="not-sure">Not sure</option>
+                </select>
               </label>
             </div>
           </section>

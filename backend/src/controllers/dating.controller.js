@@ -6,7 +6,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketIds, io } from "../lib/socket.js";
 
 const userSelect =
-    "fullName email profilePic datingProfile createdAt";
+    "fullName email profilePic role datingProfile createdAt";
 
 const MAX_DATING_PHOTOS = 6;
 
@@ -15,6 +15,12 @@ function emitToUser(userId, event, data) {
     socketIds.forEach((socketId) => {
         io.to(socketId).emit(event, data);
     });
+}
+
+function clampAge(value, fallback) {
+    const age = Number(value);
+    if (!Number.isFinite(age)) return fallback;
+    return Math.min(100, Math.max(18, Math.round(age)));
 }
 
 function normalizeInterests(interests) {
@@ -62,6 +68,15 @@ function sanitizeDatingProfile(body) {
     if ("interestedIn" in body) profile.interestedIn = body.interestedIn || "everyone";
     if ("city" in body) profile.city = String(body.city || "").trim().slice(0, 80);
     if ("intentions" in body) profile.intentions = body.intentions || "";
+    if ("preferredMinAge" in body) profile.preferredMinAge = clampAge(body.preferredMinAge, 18);
+    if ("preferredMaxAge" in body) profile.preferredMaxAge = clampAge(body.preferredMaxAge, 60);
+    if ("preferredMinAge" in body && "preferredMaxAge" in body && profile.preferredMinAge > profile.preferredMaxAge) {
+        const minAge = profile.preferredMinAge;
+        profile.preferredMinAge = profile.preferredMaxAge;
+        profile.preferredMaxAge = minAge;
+    }
+    if ("preferredCity" in body) profile.preferredCity = String(body.preferredCity || "").trim().slice(0, 80);
+    if ("preferredIntentions" in body) profile.preferredIntentions = body.preferredIntentions || "";
     if ("interests" in body) profile.interests = normalizeInterests(body.interests);
 
     return profile;
@@ -98,14 +113,14 @@ function isMutualPreference(currentUser, candidate) {
     );
 }
 
-function buildDiscoverFilters(query) {
+function buildDiscoverFilters(query, currentProfile = {}) {
     const filters = {};
-    const minAgeInput = String(query.minAge || "").trim();
-    const maxAgeInput = String(query.maxAge || "").trim();
+    const minAgeInput = String(query.minAge || currentProfile.preferredMinAge || "").trim();
+    const maxAgeInput = String(query.maxAge || currentProfile.preferredMaxAge || "").trim();
     const minAge = minAgeInput ? Number(minAgeInput) : null;
     const maxAge = maxAgeInput ? Number(maxAgeInput) : null;
-    const city = String(query.city || "").trim();
-    const intentions = String(query.intentions || "").trim();
+    const city = String(query.city || currentProfile.preferredCity || "").trim();
+    const intentions = String(query.intentions || currentProfile.preferredIntentions || "").trim();
 
     if (minAge !== null || maxAge !== null) {
         filters["datingProfile.age"] = {};
@@ -169,7 +184,7 @@ export const discoverProfiles = async (req, res) => {
             "datingProfile blockedUsers spammedUsers"
         );
         const limit = Math.min(Number(req.query.limit) || 20, 50);
-        const discoverFilters = buildDiscoverFilters(req.query);
+        const discoverFilters = buildDiscoverFilters(req.query, currentUser.datingProfile || {});
 
         const [actions, incomingLikes, matches] = await Promise.all([
             DatingAction.find({ from: req.user._id, action: "like" }).select("to"),
@@ -199,6 +214,7 @@ export const discoverProfiles = async (req, res) => {
             _id: {
                 $nin: [...excludedIds].map((id) => new mongoose.Types.ObjectId(id)),
             },
+            role: "user",
             blockedUsers: { $ne: req.user._id },
             ...discoverFilters,
         })
@@ -254,6 +270,7 @@ export const getLikedYou = async (req, res) => {
             _id: {
                 $in: likedByIds.map((id) => new mongoose.Types.ObjectId(id)),
             },
+            role: "user",
             blockedUsers: { $ne: req.user._id },
         }).select(userSelect);
 
@@ -287,7 +304,7 @@ export const likeProfile = async (req, res) => {
         }
 
         const targetUser = await User.findById(targetId).select(userSelect);
-        if (!targetUser) {
+        if (!targetUser || targetUser.role === "admin") {
             return res.status(404).json({ message: "User not found" });
         }
 
@@ -386,15 +403,18 @@ export const getMatches = async (req, res) => {
             .populate("userB", userSelect)
             .sort({ createdAt: -1 });
 
-        const result = matches.map((match) => {
-            const otherUser = getOtherUser(match, req.user._id);
-            return {
-                ...otherUser.toObject(),
-                isDatingMatch: true,
-                matchId: match._id,
-                matchedAt: match.createdAt,
-            };
-        });
+        const result = matches
+            .map((match) => {
+                const otherUser = getOtherUser(match, req.user._id);
+                if (!otherUser || otherUser.role === "admin") return null;
+                return {
+                    ...otherUser.toObject(),
+                    isDatingMatch: true,
+                    matchId: match._id,
+                    matchedAt: match.createdAt,
+                };
+            })
+            .filter(Boolean);
 
         res.status(200).json(result);
     } catch (error) {
