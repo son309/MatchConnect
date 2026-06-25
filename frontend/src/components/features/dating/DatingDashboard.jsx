@@ -74,6 +74,7 @@ function ProfileCard({
   passLabel = "Pass",
   likeTitle = "Like",
   passTitle = "Pass",
+  className = "",
 }) {
   const dating = profile?.datingProfile || {};
   const interests = Array.isArray(dating.interests) ? dating.interests : [];
@@ -170,7 +171,7 @@ function ProfileCard({
       }}
       className={`relative grid min-h-0 select-none grid-cols-1 overflow-hidden border border-gray-100 bg-white shadow-sm md:h-[calc(100vh-180px)] md:max-h-[760px] md:min-h-[560px] md:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] ${
         disabled ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
-      }`}
+      } ${className}`}
     >
       <div
         className="pointer-events-none absolute left-6 top-6 z-30 rotate-[-10deg] rounded-lg border-4 border-emerald-500 px-4 py-2 text-2xl font-black uppercase text-emerald-500"
@@ -307,6 +308,107 @@ function ProfileCard({
   );
 }
 
+function ProfilePreviewCard({ profile, currentUser }) {
+  if (!profile) return null;
+
+  const dating = profile?.datingProfile || {};
+  const interests = Array.isArray(dating.interests) ? dating.interests.slice(0, 5) : [];
+  const sharedInterests = sharedInterestsFor(currentUser, profile);
+  const isProfileVerified = profile?.profileVerification?.status === "verified";
+  const photo = avatarFor(profile);
+
+  return (
+    <div className="pointer-events-none grid min-h-0 select-none grid-cols-1 overflow-hidden border border-pink-100 bg-white shadow-md md:h-[calc(100vh-180px)] md:max-h-[760px] md:min-h-[560px] md:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
+      <div className="relative h-[520px] overflow-hidden bg-gray-100 sm:h-[620px] md:h-full">
+        <img
+          src={photo}
+          alt={profile.fullName}
+          className="block h-full w-full object-cover"
+          draggable={false}
+        />
+        <div className="absolute inset-0 bg-black/5" />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-5 text-white">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-3xl font-bold">{profile.fullName}</h2>
+            {isProfileVerified && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/95 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+                <ShieldCheck size={14} />
+                Verified
+              </span>
+            )}
+          </div>
+          {profileMeta(profile) && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-white/90">
+              <MapPin size={16} />
+              <span>{profileMeta(profile)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-col justify-between overflow-hidden p-5">
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {sharedInterests.length > 0 && (
+              <span className="rounded-lg bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">
+                {sharedInterests.length} shared interest{sharedInterests.length > 1 ? "s" : ""}
+              </span>
+            )}
+            {dating.intentions && (
+              <span className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
+                {intentionLabels[dating.intentions] || dating.intentions}
+              </span>
+            )}
+            {dating.gender && (
+              <span className="rounded-lg bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
+                {dating.gender}
+              </span>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Bio</h3>
+            <p className="mt-2 line-clamp-4 text-sm leading-6 text-gray-600">
+              {dating.bio || "No bio yet."}
+            </p>
+          </div>
+
+          {interests.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Interests</h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {interests.map((interest) => (
+                  <span
+                    key={interest}
+                    className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+                  >
+                    {interest}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SwipeDeck({ current, next, currentUser, children }) {
+  return (
+    <div className="relative pb-5">
+      {next && (
+        <div className="absolute inset-0 z-0 translate-y-3 scale-[0.985] opacity-95 blur-[0.1px] transition-transform">
+          <ProfilePreviewCard profile={next} currentUser={currentUser} />
+        </div>
+      )}
+      <div className="relative z-10" key={current?._id || "empty"}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function DatingDashboard() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => normalizeTab(searchParams.get("tab")));
@@ -323,7 +425,9 @@ export default function DatingDashboard() {
     passProfile,
   } = useDating();
   const currentProfile = discoverProfiles[0];
+  const nextProfile = discoverProfiles[1];
   const currentLikedProfile = likedYou[0];
+  const nextLikedProfile = likedYou[1];
   const pageTitle = activeTab === "liked-you" ? "Liked You" : "Discover";
 
   useEffect(() => {
@@ -361,14 +465,17 @@ export default function DatingDashboard() {
                 <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
               </div>
             ) : currentProfile ? (
-              <ProfileCard
-                key={currentProfile._id}
-                profile={currentProfile}
-                currentUser={authUser}
-                disabled={isDatingActionLoading}
-                onLike={() => likeProfile(currentProfile._id)}
-                onPass={() => passProfile(currentProfile._id)}
-              />
+              <SwipeDeck current={currentProfile} next={nextProfile} currentUser={authUser}>
+                <ProfileCard
+                  key={currentProfile._id}
+                  profile={currentProfile}
+                  currentUser={authUser}
+                  disabled={isDatingActionLoading}
+                  onLike={() => likeProfile(currentProfile._id)}
+                  onPass={() => passProfile(currentProfile._id)}
+                  className="shadow-lg shadow-gray-200/70"
+                />
+              </SwipeDeck>
             ) : (
               <div className="flex h-[480px] flex-col items-center justify-center border border-dashed border-gray-200 bg-white text-center">
                 <UserRound className="mb-3 h-12 w-12 text-gray-300" />
@@ -385,18 +492,21 @@ export default function DatingDashboard() {
         ) : activeTab === "liked-you" ? (
           <div className="mx-auto max-w-4xl">
             {currentLikedProfile ? (
-              <ProfileCard
-                key={currentLikedProfile._id}
-                profile={currentLikedProfile}
-                currentUser={authUser}
-                disabled={isDatingActionLoading}
-                onLike={() => acceptLike(currentLikedProfile)}
-                onPass={() => passProfile(currentLikedProfile._id)}
-                likeLabel="Match"
-                passLabel="Nope"
-                likeTitle="Accept match"
-                passTitle="Reject"
-              />
+              <SwipeDeck current={currentLikedProfile} next={nextLikedProfile} currentUser={authUser}>
+                <ProfileCard
+                  key={currentLikedProfile._id}
+                  profile={currentLikedProfile}
+                  currentUser={authUser}
+                  disabled={isDatingActionLoading}
+                  onLike={() => acceptLike(currentLikedProfile)}
+                  onPass={() => passProfile(currentLikedProfile._id)}
+                  likeLabel="Match"
+                  passLabel="Nope"
+                  likeTitle="Accept match"
+                  passTitle="Reject"
+                  className="shadow-lg shadow-gray-200/70"
+                />
+              </SwipeDeck>
             ) : (
               <div className="flex h-[480px] flex-col items-center justify-center border border-dashed border-gray-200 bg-white text-gray-400">
                 <Heart className="mb-3 h-12 w-12" />
