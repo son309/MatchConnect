@@ -33,6 +33,8 @@ const MAX_DATING_PHOTOS = 6;
 const AVATAR_IMAGE_SIZE = 640;
 const DATING_IMAGE_SIZE = 1600;
 const IMAGE_QUALITY = 0.82;
+const AGE_MIN = 18;
+const AGE_MAX = 100;
 
 function compressImageFile(file, maxSize) {
   if (!file.type.startsWith("image/")) {
@@ -87,6 +89,7 @@ function getProfileCompletion({ authUser, formData, datingPhotos, previewUrl }) 
     { label: "Intentions", done: Boolean(formData.intentions) },
     { label: "Bio", done: Boolean(formData.bio.trim()) },
     { label: "Interests", done: Boolean(formData.interestsText.trim()) },
+    { label: "Preferred Intentions", done: Boolean(formData.preferredIntentions) },
   ];
   const completed = checks.filter((item) => item.done).length;
 
@@ -96,6 +99,77 @@ function getProfileCompletion({ authUser, formData, datingPhotos, previewUrl }) 
     percent: Math.round((completed / checks.length) * 100),
     missing: checks.filter((item) => !item.done).map((item) => item.label),
   };
+}
+
+
+function getAgeRangePercent(value) {
+  return ((Number(value) - AGE_MIN) / (AGE_MAX - AGE_MIN)) * 100;
+}
+
+function DualAgeRangeSlider({ minValue, maxValue, onChange }) {
+  const minPercent = getAgeRangePercent(minValue);
+  const maxPercent = getAgeRangePercent(maxValue);
+
+  const rangeInputClass = "pointer-events-none absolute inset-x-0 top-1/2 h-6 w-full -translate-y-1/2 appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:appearance-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-20 [&::-webkit-slider-thumb]:mt-[-7px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-pink-500 [&::-webkit-slider-thumb]:bg-white/70 [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:backdrop-blur-sm [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-pink-500 [&::-moz-range-thumb]:bg-white/70 [&::-moz-range-thumb]:shadow-sm";
+
+  return (
+    <div className="pt-4">
+      <div className="relative h-10 px-1">
+        <div className="absolute inset-x-1 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-gray-200" />
+        <div
+          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-pink-500"
+          style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}
+        />
+        <input
+          type="range"
+          min={AGE_MIN}
+          max={AGE_MAX}
+          value={minValue}
+          onChange={(event) => onChange("preferredMinAge", event.target.value)}
+          className={rangeInputClass}
+          aria-label="Minimum age"
+        />
+        <input
+          type="range"
+          min={AGE_MIN}
+          max={AGE_MAX}
+          value={maxValue}
+          onChange={(event) => onChange("preferredMaxAge", event.target.value)}
+          className={rangeInputClass}
+          aria-label="Maximum age"
+        />
+      </div>
+      <div className="mt-2 flex justify-between text-xs font-semibold text-gray-400">
+        <span>{AGE_MIN}</span>
+        <span>{AGE_MAX}</span>
+      </div>
+    </div>
+  );
+}
+
+function getMissingRequiredFields({ authUser, formData, datingPhotos, previewUrl }) {
+  const age = Number(formData.age);
+  const interests = formData.interestsText
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const checks = [
+    { label: "Avatar", done: Boolean(previewUrl || authUser?.profilePic) },
+    { label: "Dating photos", done: datingPhotos.length > 0 },
+    { label: "Full name", done: Boolean(formData.fullName.trim()) },
+    { label: "Phone number", done: Boolean(formData.phone.trim()) },
+    { label: "Age", done: Number.isFinite(age) && age >= AGE_MIN && age <= AGE_MAX },
+    { label: "Gender", done: Boolean(formData.gender) },
+    { label: "Interested In", done: Boolean(formData.interestedIn) },
+    { label: "City", done: Boolean(formData.city.trim()) },
+    { label: "Intentions", done: Boolean(formData.intentions) },
+    { label: "Bio", done: Boolean(formData.bio.trim()) },
+    { label: "Interests", done: interests.length > 0 },
+    { label: "Preferred Intentions", done: Boolean(formData.preferredIntentions) },
+  ];
+
+  return checks.filter((item) => !item.done).map((item) => item.label);
 }
 
 export default function ProfileSettings() {
@@ -112,7 +186,6 @@ export default function ProfileSettings() {
     intentions: "",
     preferredMinAge: 18,
     preferredMaxAge: 60,
-    preferredCity: "",
     preferredIntentions: "",
     bio: "",
     interestsText: "",
@@ -138,7 +211,6 @@ export default function ProfileSettings() {
       intentions: dating.intentions || "",
       preferredMinAge: dating.preferredMinAge || 18,
       preferredMaxAge: dating.preferredMaxAge || 60,
-      preferredCity: dating.preferredCity || "",
       preferredIntentions: dating.preferredIntentions || "",
       bio: dating.bio || "",
       interestsText: Array.isArray(dating.interests)
@@ -169,7 +241,7 @@ export default function ProfileSettings() {
   };
 
   const handleAgeRangeChange = (field, value) => {
-    const nextValue = Number(value);
+    const nextValue = Math.min(AGE_MAX, Math.max(AGE_MIN, Number(value)));
     setFormData((prev) => {
       const next = { ...prev, [field]: nextValue };
       if (field === "preferredMinAge" && nextValue > Number(prev.preferredMaxAge)) {
@@ -253,6 +325,12 @@ export default function ProfileSettings() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const missingFields = getMissingRequiredFields({ authUser, formData, datingPhotos, previewUrl });
+    if (missingFields.length > 0) {
+      toast.error(`Please complete your profile before saving: ${missingFields.slice(0, 4).join(", ")}${missingFields.length > 4 ? "..." : ""}`);
+      return;
+    }
+
     const profileUpdate = { fullName: formData.fullName.trim(), phone: formData.phone.trim() };
     if (selectedFile) {
       profileUpdate.profilePic = await compressImageFile(selectedFile, AVATAR_IMAGE_SIZE);
@@ -274,7 +352,6 @@ export default function ProfileSettings() {
       intentions: formData.intentions,
       preferredMinAge: formData.preferredMinAge,
       preferredMaxAge: formData.preferredMaxAge,
-      preferredCity: formData.preferredCity,
       preferredIntentions: formData.preferredIntentions,
       bio: formData.bio,
       photos,
@@ -702,49 +779,14 @@ export default function ProfileSettings() {
                   {formData.preferredMinAge} - {formData.preferredMaxAge}
                 </span>
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-xs font-semibold text-gray-500">Minimum age</span>
-                  <input
-                    type="range"
-                    min="18"
-                    max="100"
-                    value={formData.preferredMinAge}
-                    onChange={(e) => handleAgeRangeChange("preferredMinAge", e.target.value)}
-                    className="w-full accent-pink-500"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-semibold text-gray-500">Maximum age</span>
-                  <input
-                    type="range"
-                    min="18"
-                    max="100"
-                    value={formData.preferredMaxAge}
-                    onChange={(e) => handleAgeRangeChange("preferredMaxAge", e.target.value)}
-                    className="w-full accent-pink-500"
-                  />
-                </label>
-              </div>
+              <DualAgeRangeSlider
+                minValue={formData.preferredMinAge}
+                maxValue={formData.preferredMaxAge}
+                onChange={handleAgeRangeChange}
+              />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Preferred City
-                </span>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.preferredCity}
-                    onChange={(e) => handleChange("preferredCity", e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                    placeholder="Any city"
-                  />
-                </div>
-              </label>
-
+            <div className="grid gap-4">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-gray-700">
                   Preferred Intentions
@@ -754,7 +796,7 @@ export default function ProfileSettings() {
                   onChange={(e) => handleChange("preferredIntentions", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
                 >
-                  <option value="">Any intention</option>
+                  <option value="">Select intention</option>
                   <option value="relationship">Relationship</option>
                   <option value="casual">Casual</option>
                   <option value="friends">Friends</option>

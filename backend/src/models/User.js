@@ -149,11 +149,6 @@ const userSchema = new mongoose.Schema({
             max: 100,
             default: 60,
         },
-        preferredCity: {
-            type: String,
-            default: "",
-            maxlength: 80,
-        },
         preferredIntentions: {
             type: String,
             enum: ["relationship", "casual", "friends", "not-sure", ""],

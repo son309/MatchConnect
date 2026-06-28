@@ -75,7 +75,6 @@ function sanitizeDatingProfile(body) {
         profile.preferredMinAge = profile.preferredMaxAge;
         profile.preferredMaxAge = minAge;
     }
-    if ("preferredCity" in body) profile.preferredCity = String(body.preferredCity || "").trim().slice(0, 80);
     if ("preferredIntentions" in body) profile.preferredIntentions = body.preferredIntentions || "";
     if ("interests" in body) profile.interests = normalizeInterests(body.interests);
 
@@ -119,7 +118,7 @@ function buildDiscoverFilters(query, currentProfile = {}) {
     const maxAgeInput = String(query.maxAge || currentProfile.preferredMaxAge || "").trim();
     const minAge = minAgeInput ? Number(minAgeInput) : null;
     const maxAge = maxAgeInput ? Number(maxAgeInput) : null;
-    const city = String(query.city || currentProfile.preferredCity || "").trim();
+    const city = String(query.city || "").trim();
     const intentions = String(query.intentions || currentProfile.preferredIntentions || "").trim();
 
     if (minAge !== null || maxAge !== null) {
@@ -214,7 +213,7 @@ export const discoverProfiles = async (req, res) => {
             _id: {
                 $nin: [...excludedIds].map((id) => new mongoose.Types.ObjectId(id)),
             },
-            role: "user",
+            role: { $ne: "admin" },
             blockedUsers: { $ne: req.user._id },
             ...discoverFilters,
         })
@@ -270,7 +269,7 @@ export const getLikedYou = async (req, res) => {
             _id: {
                 $in: likedByIds.map((id) => new mongoose.Types.ObjectId(id)),
             },
-            role: "user",
+            role: { $ne: "admin" },
             blockedUsers: { $ne: req.user._id },
         }).select(userSelect);
 
