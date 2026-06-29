@@ -1,7 +1,6 @@
 import Call from "../models/Call.js";
 import DatingAction from "../models/DatingAction.js";
 import DatingMatch from "../models/DatingMatch.js";
-import Group from "../models/Group.js";
 import Message from "../models/Message.js";
 import Report from "../models/Report.js";
 import User from "../models/User.js";
@@ -210,10 +209,8 @@ export const deleteUserPermanently = async (req, res) => {
           },
         }
       ),
-      Group.updateMany({}, { $pull: { members: userId, admins: userId } }),
     ]);
 
-    await Group.deleteMany({ members: { $size: 0 } });
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({ message: "User permanently deleted", userId });

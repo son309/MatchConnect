@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+﻿import { Routes, Route, Navigate } from "react-router-dom";
 import { LoaderIcon } from "lucide-react"; // Import icon loading
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
@@ -25,7 +25,7 @@ function App() {
   const { authUser, isCheckingAuth } = useAuth();
   const isAdmin = authUser?.role === "admin";
 
-  //Chặn render router khi đang kiểm tra đăng nhập
+  //Cháº·n render router khi Ä‘ang kiá»ƒm tra Ä‘Äƒng nháº­p
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex items-center justify-center h-screen w-full bg-[#F2F0E9]">
@@ -52,13 +52,13 @@ function App() {
           element={<CallPageWrapper />}
         />
         <Route path="/chat" element={authUser ? <ChatPage /> : <Navigate to="/login" />} >
-          {/* Mặc định vào /chat sẽ chuyển hướng sang /chat/home */}
+          {/* Máº·c Ä‘á»‹nh vÃ o /chat sáº½ chuyá»ƒn hÆ°á»›ng sang /chat/home */}
           <Route index element={<Navigate to={isAdmin ? "admin" : "dating?tab=discover"} replace />} />
 
-          {/* Các Route con */}
+          {/* CÃ¡c Route con */}
           <Route path="home" element={!isAdmin ? <HomeDashboard /> : <Navigate to="/chat/admin" replace />} />
           <Route path="messages" element={!isAdmin ? <ChatDashboard title="Messages" /> : <Navigate to="/chat/admin" replace />} />
-          <Route path="matches" element={!isAdmin ? <ChatDashboard title="Matches" allowGroups={false} /> : <Navigate to="/chat/admin" replace />} />
+          <Route path="matches" element={!isAdmin ? <ChatDashboard title="Matches" /> : <Navigate to="/chat/admin" replace />} />
           <Route path="dating" element={!isAdmin ? <DatingDashboard /> : <Navigate to="/chat/admin" replace />} />
           <Route path="profile" element={!isAdmin ? <ProfileSettings /> : <Navigate to="/chat/admin" replace />} />
           <Route path="friends" element={!isAdmin ? <FriendsDashboard /> : <Navigate to="/chat/admin" replace />}>
@@ -69,10 +69,10 @@ function App() {
             <Route path="sent" element={<SentRequests />} />
           </Route>
           <Route path="calls" element={!isAdmin ? <CallsDashboard /> : <Navigate to="/chat/admin" replace />} />
-          {/* [MODIFIED] Cấu hình Nested Route cho Settings */}
+          {/* [MODIFIED] Cáº¥u hÃ¬nh Nested Route cho Settings */}
           <Route path="admin" element={authUser?.role === "admin" ? <AdminDashboard /> : <Navigate to="/chat/dating?tab=discover" replace />} />
           <Route path="settings" element={<SettingsDashboard />}>
-            {/* Mặc định vào settings sẽ chuyển ngay tới profile */}
+            {/* Máº·c Ä‘á»‹nh vÃ o settings sáº½ chuyá»ƒn ngay tá»›i profile */}
             <Route index element={<Navigate to="activity" replace />} />
             <Route path="activity" element={<ActivitySettings />} />
             <Route path="profile" element={<Navigate to="/chat/profile" replace />} />
@@ -86,3 +86,4 @@ function App() {
 }
 
 export default App;
+

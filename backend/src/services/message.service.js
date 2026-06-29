@@ -1,5 +1,4 @@
-import Group from "../models/Group.js";
-import DatingMatch from "../models/DatingMatch.js";
+﻿import DatingMatch from "../models/DatingMatch.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
 import { AppError } from "./AppError.js";
@@ -95,9 +94,7 @@ export const sendMessageService = async (senderId, receiverId, text, imageUrl, a
  * Get all chat partners for a user with last message info and unread count
  */
 export const getChatPartnersService = async (userId) => {
-    // Only get direct messages (exclude group messages which have groupId)
     const messages = await Message.find({
-        groupId: null,
         $or: [{ senderId: userId }, { receiverId: userId }],
     }).sort({ createdAt: -1 });
 
@@ -298,39 +295,6 @@ export const searchAllMessagesService = async (userId, searchQuery) => {
     return messages;
 };
 
-// ==================== GROUP MESSAGE SERVICES ====================
-
-/**
- * Get messages for a group
- */
-export const getGroupMessagesService = async (groupId, userId) => {
-    // Verify user is a member of the group
-    const group = await Group.findOne({ _id: groupId, members: userId });
-    if (!group) {
-        throw new AppError("Group not found or you are not a member", 404);
-    }
-
-    const messages = await Message.find({ groupId })
-        .populate("senderId", "fullName profilePic email")
-        .sort({ createdAt: 1 });
-
-
-    // Mark all messages in this group as read by this user
-    await Message.updateMany(
-        {
-            groupId,
-            senderId: { $ne: userId },
-            readBy: { $ne: userId }
-        },
-        {
-            $addToSet: { readBy: userId }
-        }
-    );
-
-    return messages;
-};
-
-
 export const getSharedMediaService = async (authUserId, otherUserId) => {
     const images = await Message.find({
         $or: [
@@ -346,37 +310,7 @@ export const getSharedMediaService = async (authUserId, otherUserId) => {
 };
 
 /**
- * Send a message to a group
- */
-export const sendGroupMessageService = async ({ senderId, groupId, text, imageUrl, audioUrl }) => {
-    if (!text && !imageUrl && !audioUrl) {
-        throw new AppError("Text, image or audio is required", 400);
-    }
-
-    // Verify user is a member of the group
-    const group = await Group.findOne({ _id: groupId, members: senderId });
-    if (!group) {
-        throw new AppError("Group not found or you are not a member", 404);
-    }
-
-    const newMessage = new Message({
-        senderId,
-        groupId,
-        text,
-        image: imageUrl,
-        audio: audioUrl,
-    });
-
-    await newMessage.save();
-
-    // Populate sender info before returning
-    await newMessage.populate("senderId", "fullName profilePic email");
-
-    return { message: newMessage, group };
-};
-
-/**
- * Xóa toàn bộ cuộc trò chuyện giữa người dùng hiện tại và người chat
+ * XÃ³a toÃ n bá»™ cuá»™c trÃ² chuyá»‡n giá»¯a ngÆ°á»i dÃ¹ng hiá»‡n táº¡i vÃ  ngÆ°á»i chat
  */
 export const deleteConversationService = async (myId, partnerId) => {
     if (!partnerId) {
@@ -384,7 +318,6 @@ export const deleteConversationService = async (myId, partnerId) => {
     }
 
     const result = await Message.deleteMany({
-        groupId: null, // Chỉ xóa tin nhắn 1-1, không xóa tin nhắn nhóm
         $or: [
             { senderId: myId, receiverId: partnerId },
             { senderId: partnerId, receiverId: myId },
@@ -403,26 +336,3 @@ export const deleteConversationService = async (myId, partnerId) => {
 };
 
 
-/** * Xóa toàn bộ cuộc trò chuyện nhóm
- */
-export const deleteGroupConversationService = async (groupId, userId) => {
-    if (!groupId) {
-        throw new AppError("Group ID is required", 400);
-    }
-
-    //Kiểm tra xem nhóm có tồn tại và người dùng có phải thành viên k
-    const group = await Group.findById(groupId);
-    if (!group) {
-        throw new AppError("Group not found", 404);
-    }
-
-
-    //Xóa tất cả tin nhắn có groupId 
-    const result = await Message.deleteMany({ groupId: groupId });
-
-    return {
-        success: true,
-        message: "Group conversation history deleted successfully",
-        deletedCount: result.deletedCount,
-    };
-};

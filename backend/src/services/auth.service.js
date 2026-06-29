@@ -4,7 +4,6 @@ import User from "../models/User.js";
 import Call from "../models/Call.js";
 import DatingAction from "../models/DatingAction.js";
 import DatingMatch from "../models/DatingMatch.js";
-import Group from "../models/Group.js";
 import Message from "../models/Message.js";
 import Report from "../models/Report.js";
 import { ENV } from "../lib/env.js";
@@ -199,10 +198,8 @@ export const deleteAccountService = async (userId, currentPassword) => {
                 },
             }
         ),
-        Group.updateMany({}, { $pull: { members: userId, admins: userId } }),
     ]);
 
-    await Group.deleteMany({ members: { $size: 0 } });
     await User.findByIdAndDelete(userId);
 
     return { message: "Account deleted successfully" };
