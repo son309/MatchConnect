@@ -99,7 +99,7 @@ export default function HomePage() {
               <h3 className="text-xl font-semibold text-white mb-4">Contact</h3>
               <p className="flex items-center mb-2">
                 <MailIcon className="w-5 h-5 mr-2 text-pink-400" />
-                1@gmail.com
+                support@matchconnect.app
               </p>
               <p className="flex items-center">
                 <PhoneIcon className="w-5 h-5 mr-2 text-pink-400" />
@@ -126,11 +126,10 @@ export default function HomePage() {
 
           {/* Footer */}
           <div className="text-center mt-10 border-t border-gray-700 pt-6">
-            <p>&copy; 2025 MatchConnect. All rights reserved.</p>
+            <p>&copy; 2026 MatchConnect. All rights reserved.</p>
           </div>
         </section>
       </main>
     </div>
   );
 }
-

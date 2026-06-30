@@ -33,14 +33,15 @@
 
 
 
-import { resend } from "../lib/mail.js"; // Đảm bảo lib/mail.js đã export const resend = new Resend(...)
+import { resend } from "../lib/mail.js";
 import { createWelcomeEmailTemplate } from "./WelcomeemailTemplate.js";
 import { createOTPEmailTemplate } from "./OTPEmailTemplate.js";
 import { ENV } from "../lib/env.js";
 
 
-const SENDER_EMAIL = `Team 24 <no-reply@thuminhngo.id.vn>`; 
-
+const senderName = ENV.EMAIL_FROM_NAME || "MatchConnect";
+const senderEmail = ENV.EMAIL_FROM || "no-reply@matchconnect.app";
+const SENDER_EMAIL = `${senderName} <${senderEmail}>`;
 export const sendWelcomeEmail = async (email, name, clientURL) => {
   try {
     const { data, error } = await resend.emails.send({
@@ -63,7 +64,7 @@ export const sendWelcomeEmail = async (email, name, clientURL) => {
 export const sendOTPEmail = async (email, name, otp) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: `Security Team <otp@thuminhngo.id.vn>`, 
+      from: SENDER_EMAIL, 
       to: [email],
       subject: "OTP code to reset your password",
       html: createOTPEmailTemplate(name, otp),
