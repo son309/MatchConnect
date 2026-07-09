@@ -11,11 +11,22 @@ import { useAuth } from "./AuthContext";
 
 const CallContext = createContext();
 
+function getApiBaseUrl() {
+  const defaultUrl =
+    import.meta.env.MODE === "development"
+      ? "http://localhost:3000/api"
+      : `${window.location.origin}/api`;
+
+  return (import.meta.env.VITE_API_URL || defaultUrl).replace(/\/$/, "");
+}
+
 // Function to fetch ICE servers configuration from backend
 // This keeps credentials secure on the server side
 const fetchICEServers = async () => {
   try {
-    const response = await fetch("/api/calls/turn-config");
+    const response = await fetch(`${getApiBaseUrl()}/calls/turn-config`, {
+      credentials: "include",
+    });
     const data = await response.json();
 
     if (data.success) {

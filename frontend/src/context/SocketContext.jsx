@@ -12,6 +12,12 @@ import { useAuth } from "./AuthContext";
 const SocketContext = createContext();
 const ACTIVITY_VISIBILITY_KEY = "activityVisible";
 
+function getSocketBaseUrl() {
+    if (import.meta.env.MODE === "development") return "http://localhost:3000";
+
+    return import.meta.env.VITE_SOCKET_URL || window.location.origin;
+}
+
 function getStoredActivityVisibility() {
     return localStorage.getItem(ACTIVITY_VISIBILITY_KEY) !== "false";
 }
@@ -32,8 +38,7 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         if (authUser) {
-            const BASE_URL =
-                import.meta.env.MODE === "development" ? "http://localhost:3000" : "/";
+            const BASE_URL = getSocketBaseUrl();
 
             const newSocket = io(BASE_URL, {
                 withCredentials: true,
@@ -50,6 +55,11 @@ export const SocketProvider = ({ children }) => {
 
             newSocket.on("disconnect", () => {
                 console.log("Socket disconnected");
+                setIsConnected(false);
+            });
+
+            newSocket.on("connect_error", (error) => {
+                console.error("Socket connection error:", error.message);
                 setIsConnected(false);
             });
 
