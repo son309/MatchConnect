@@ -1,11 +1,12 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { Activity, Lock, Trash2 } from "lucide-react";
+import { Activity, Ban, Lock, Trash2 } from "lucide-react";
 import SettingsSidebar from "./SettingsSidebar";
 
 export default function SettingsDashboard() {
   // Menu items cho mobile nav
   const menuItems = [
     { path: "activity", label: "Activity", icon: Activity },
+    { path: "blocked", label: "Blocked", icon: Ban },
     { path: "password", label: "Password", icon: Lock },
     { path: "account", label: "Delete Account", icon: Trash2 },
   ];

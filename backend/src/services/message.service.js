@@ -26,6 +26,14 @@ async function hasDatingMatch(userIdA, userIdB) {
     return Boolean(await DatingMatch.exists({ userA, userB }));
 }
 
+function getMessagePreview(message) {
+    if (!message) return "";
+    if (message.messageType === "call") return message.text || "Call";
+    if (message.audio) return "Sent a voice message";
+    if (message.image) return "Sent an image";
+    return message.text || "";
+}
+
 /**
  * Get all contacts (friends) for a user
  */
@@ -144,7 +152,7 @@ export const getChatPartnersService = async (userId) => {
             datingProfile: partner.datingProfile,
             isDatingMatch: matchIdSet.has(partner._id.toString()),
             isOnline: partner.isOnline || false,
-            lastMessage: partnerData?.lastMessage?.text || "",
+            lastMessage: getMessagePreview(partnerData?.lastMessage),
             lastMessageTime: partnerData?.lastMessage?.createdAt || "",
             unreadCount: partnerData?.unreadCount || 0,
         };

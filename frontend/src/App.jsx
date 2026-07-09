@@ -21,6 +21,7 @@ import ChangePassword from "./components/features/settings/ChangePassword";
 import ActivitySettings from "./components/features/settings/ActivitySettings";
 import AccountSettings from "./components/features/settings/AccountSettings";
 import AdminDashboard from "./components/features/admin/AdminDashboard";
+import BlockedUsersSettings from "./components/features/settings/BlockedUsersSettings";
 function App() {
   const { authUser, isCheckingAuth } = useAuth();
   const isAdmin = authUser?.role === "admin";
@@ -75,6 +76,7 @@ function App() {
             {/* Máº·c Ä‘á»‹nh vÃ o settings sáº½ chuyá»ƒn ngay tá»›i profile */}
             <Route index element={<Navigate to="activity" replace />} />
             <Route path="activity" element={<ActivitySettings />} />
+            <Route path="blocked" element={<BlockedUsersSettings />} />
             <Route path="profile" element={<Navigate to="/chat/profile" replace />} />
             <Route path="password" element={<ChangePassword />} />
             <Route path="account" element={<AccountSettings />} />

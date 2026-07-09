@@ -5,6 +5,7 @@ import { ENV } from "./env.js";
 import { socketAuthMiddleware } from "../middleware/socket.auth.middleware.js";
 import Call from "../models/Call.js";
 import DatingMatch from "../models/DatingMatch.js";
+import Message from "../models/Message.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -62,6 +63,26 @@ async function hasDatingMatch(userIdA, userIdB) {
 
 const activeCalls = {};
 
+function getCallMessageText(callType, status, duration) {
+  const label = callType === "video" ? "Video call" : "Voice call";
+
+  if (status === "answered") {
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    const durationText = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    return `${label} ended (${durationText})`;
+  }
+
+  const statusLabels = {
+    missed: "missed",
+    rejected: "declined",
+    busy: "busy",
+    unavailable: "unavailable",
+  };
+
+  return `${label} ${statusLabels[status] || status}`;
+}
+
 async function saveCallRecord(callId, status) {
   const call = activeCalls[callId];
   if (!call) {
@@ -74,12 +95,13 @@ async function saveCallRecord(callId, status) {
     const duration = call.answeredAt
       ? Math.round((endTime - call.answeredAt) / 1000)
       : 0;
+    const callType = call.isVideo ? "video" : "audio";
 
     const callRecord = new Call({
       callId,
       caller: call.callerId,
       receiver: call.receiverId,
-      callType: call.isVideo ? "video" : "audio",
+      callType,
       status,
       duration,
       startedAt: call.answeredAt ? new Date(call.answeredAt) : null,
@@ -87,6 +109,29 @@ async function saveCallRecord(callId, status) {
     });
 
     await callRecord.save();
+    const existingCallMessage = await Message.exists({
+      messageType: "call",
+      "call.callId": callId,
+    });
+
+    if (!existingCallMessage) {
+      const callMessage = await Message.create({
+        senderId: call.callerId,
+        receiverId: call.receiverId,
+        text: getCallMessageText(callType, status, duration),
+        messageType: "call",
+        call: {
+          callId,
+          callType,
+          status,
+          duration,
+        },
+      });
+
+      emitToUser(call.callerId, "newMessage", callMessage);
+      emitToUser(call.receiverId, "newMessage", callMessage);
+    }
+
     console.log("Call record saved:", callId, "status:", status, "duration:", duration);
   } catch (error) {
     console.error("Error saving call record:", error);

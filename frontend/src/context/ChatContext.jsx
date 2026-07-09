@@ -12,6 +12,18 @@ import { useSocket } from "./SocketContext";
 
 const ChatContext = createContext();
 
+function getId(value) {
+    return value?._id || value;
+}
+
+function getMessagePreview(message) {
+    if (!message) return "";
+    if (message.messageType === "call") return message.text || "Call";
+    if (message.audio) return "Sent a voice message";
+    if (message.image) return "Sent an image";
+    return message.text || "";
+}
+
 export const ChatProvider = ({ children }) => {
     // --- STATE ---
     const [allContacts, setAllContacts] = useState([]);
@@ -197,7 +209,7 @@ export const ChatProvider = ({ children }) => {
                     chat._id === receiverId
                         ? {
                             ...chat,
-                            lastMessage: newMessage.text || "Sent an image",
+                            lastMessage: getMessagePreview(newMessage),
                             lastMessageTime: newMessage.createdAt
                         }
                         : chat
@@ -246,27 +258,36 @@ export const ChatProvider = ({ children }) => {
         if (socket && authUser) {
 
             socket.on("newMessage", (message) => {
-                const senderId = message.senderId?._id || message.senderId;
-                if (senderId === authUser._id) return;
+                const senderId = getId(message.senderId);
+                const receiverId = getId(message.receiverId);
+                const isOwnMessage = String(senderId) === String(authUser._id);
+                const partnerId = isOwnMessage ? receiverId : senderId;
+
+                if (!partnerId) return;
 
                 // Kiểm tra xem sender có phải là người đang chat trực tiếp không
-                const isFromSelectedUser = selectedUser && String(senderId) === String(selectedUser._id);
+                const isFromSelectedUser = selectedUser && String(partnerId) === String(selectedUser._id);
 
                 if (isFromSelectedUser) {
-                    setMessages((prev) => sortMessagesChronologically([...prev, message]));
-                    markAsRead(selectedUser._id);
+                    setMessages((prev) => {
+                        const isDuplicate = prev.some((msg) => msg._id === message._id);
+                        return isDuplicate ? prev : sortMessagesChronologically([...prev, message]);
+                    });
+                    if (!isOwnMessage) {
+                        markAsRead(selectedUser._id);
+                    }
                 }
 
                 setHomeStats((prev) => {
-                    const chatExists = prev.chats.find((c) => c._id === senderId);
+                    const chatExists = prev.chats.find((c) => String(c._id) === String(partnerId));
 
                     if (chatExists) {
                         const updatedChats = prev.chats.map((chat) => {
-                            if (chat._id === senderId) {
+                            if (String(chat._id) === String(partnerId)) {
                                 return {
                                     ...chat,
-                                    unreadCount: isFromSelectedUser ? 0 : (chat.unreadCount || 0) + 1, // Logic chấm đỏ
-                                    lastMessage: message.text || "Sent an image",
+                                    unreadCount: isOwnMessage || isFromSelectedUser ? 0 : (chat.unreadCount || 0) + 1, // Logic chấm đỏ
+                                    lastMessage: getMessagePreview(message),
                                     lastMessageTime: message.createdAt // Cập nhật thời gian để sắp xếp
                                 };
                             }

@@ -1,14 +1,51 @@
 import EmojiPicker from "emoji-picker-react";
-import { Smile } from "lucide-react";
+import { Phone, PhoneMissed, PhoneOff, Smile, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "../../../context/ChatContext";
 import "../../../styles/emoji-picker.css";
+
+function formatCallDuration(duration = 0) {
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+function getCallDisplay(message) {
+  const call = message.call || {};
+  const isVideo = call.callType === "video";
+  const label = isVideo ? "Video call" : "Voice call";
+
+  if (call.status === "answered") {
+    return {
+      icon: isVideo ? Video : Phone,
+      title: `${label} ended`,
+      subtitle: formatCallDuration(call.duration),
+    };
+  }
+
+  const statusText = {
+    missed: "Missed",
+    rejected: "Declined",
+    busy: "Busy",
+    unavailable: "Unavailable",
+  };
+
+  return {
+    icon: call.status === "missed" ? PhoneMissed : PhoneOff,
+    title: `${statusText[call.status] || "Call"} ${label.toLowerCase()}`,
+    subtitle: message.text || label,
+  };
+}
 
 export default function MessageBubble({ message, isMe, avatar, isLastInGroup }) {
   const [showReactionBar, setShowReactionBar] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
   const { reactToMessage } = useChat();
   const wrapperRef = useRef(null);
+  const isCallMessage = message.messageType === "call";
+  const callDisplay = isCallMessage ? getCallDisplay(message) : null;
+  const CallIcon = callDisplay?.icon;
+
   if (message.isSystem) {
     return <div className="text-center text-xs text-gray-400 my-4 italic bg-gray-50 py-1 px-3 rounded-full w-fit mx-auto">{message.text}</div>;
   }
@@ -67,26 +104,44 @@ export default function MessageBubble({ message, isMe, avatar, isLastInGroup }) 
               ? "bg-gradient-to-br shadown-sm py-2 px-4 from-pink-500 to-rose-400 text-white rounded-[20px] rounded-tr-sm"
               : "bg-white shadow-sm py-2 px-4 border border-gray-100 text-gray-800 rounded-[20px] rounded-tl-sm")
           }`}>
-          {message.image && (
-            <img
-              src={message.image}
-              alt="Shared image"
-              className="object-cover rounded-lg mb-2 cursor-pointer"
-              width={360}
-              height={360}
-              onClick={() => window.open(message.image, '_blank')}
-            />
-          )}
-          {message.audio && (
-            <div className={`flex items-center gap-2 w-full min-w-[200px] sm:min-w-[280px] max-w-full ${isMe ? "text-white" : "text-gray-800"}`}>
-              <audio
-                controls
-                src={message.audio}
-                className="w-full h-8"
-              />
+          {isCallMessage ? (
+            <div className="flex items-center gap-3 min-w-[190px]">
+              {CallIcon && (
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${isMe ? "bg-white/20" : "bg-pink-50 text-pink-500"}`}>
+                  <CallIcon size={18} />
+                </span>
+              )}
+              <div className="min-w-0">
+                <div className="font-medium leading-tight">{callDisplay.title}</div>
+                <div className={`text-xs leading-tight mt-0.5 ${isMe ? "text-white/80" : "text-gray-500"}`}>
+                  {callDisplay.subtitle}
+                </div>
+              </div>
             </div>
+          ) : (
+            <>
+              {message.image && (
+                <img
+                  src={message.image}
+                  alt="Shared image"
+                  className="object-cover rounded-lg mb-2 cursor-pointer"
+                  width={360}
+                  height={360}
+                  onClick={() => window.open(message.image, '_blank')}
+                />
+              )}
+              {message.audio && (
+                <div className={`flex items-center gap-2 w-full min-w-[200px] sm:min-w-[280px] max-w-full ${isMe ? "text-white" : "text-gray-800"}`}>
+                  <audio
+                    controls
+                    src={message.audio}
+                    className="w-full h-8"
+                  />
+                </div>
+              )}
+              {message.text}
+            </>
           )}
-          {message.text}
         </div>
 
         {/* Timestamp */}
