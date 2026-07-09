@@ -15,7 +15,7 @@ export const protectRoute = async (req, res, next) => {
 
         if (user.isSuspended && user.role !== "admin") {
             return res.status(403).json({ message: "Your account has been suspended" });
-        }
+        }   
 
         req.user = user;
         next()
