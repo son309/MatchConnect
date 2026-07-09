@@ -34,6 +34,33 @@ function normalizeInterests(interests) {
     )];
 }
 
+function getIncompleteDatingProfileFields(profile = {}) {
+    const missingFields = [];
+
+    if (!String(profile.bio || "").trim()) missingFields.push("bio");
+    if (!Number.isFinite(Number(profile.age)) || Number(profile.age) < 18 || Number(profile.age) > 100) {
+        missingFields.push("age");
+    }
+    if (!String(profile.gender || "").trim()) missingFields.push("gender");
+    if (!String(profile.interestedIn || "").trim()) missingFields.push("interestedIn");
+    if (!String(profile.city || "").trim()) missingFields.push("city");
+    if (!String(profile.intentions || "").trim()) missingFields.push("intentions");
+    if (!Number.isFinite(Number(profile.preferredMinAge))) missingFields.push("preferredMinAge");
+    if (!Number.isFinite(Number(profile.preferredMaxAge))) missingFields.push("preferredMaxAge");
+    if (!Array.isArray(profile.interests) || profile.interests.filter(Boolean).length === 0) {
+        missingFields.push("interests");
+    }
+    if (!Array.isArray(profile.photos) || profile.photos.filter(Boolean).length === 0) {
+        missingFields.push("photos");
+    }
+
+    return missingFields;
+}
+
+function isDatingProfileComplete(profile = {}) {
+    return getIncompleteDatingProfileFields(profile).length === 0;
+}
+
 async function normalizePhotos(photos) {
     if (!Array.isArray(photos)) return [];
 
@@ -182,6 +209,15 @@ export const discoverProfiles = async (req, res) => {
         const currentUser = await User.findById(req.user._id).select(
             "datingProfile blockedUsers spammedUsers"
         );
+        const missingFields = getIncompleteDatingProfileFields(currentUser?.datingProfile || {});
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                code: "DATING_PROFILE_INCOMPLETE",
+                message: "Please complete and save your dating profile before using Discover",
+                missingFields,
+            });
+        }
+
         const limit = Math.min(Number(req.query.limit) || 20, 50);
         const discoverFilters = buildDiscoverFilters(req.query, currentUser.datingProfile || {});
 
@@ -215,6 +251,14 @@ export const discoverProfiles = async (req, res) => {
             },
             role: { $ne: "admin" },
             blockedUsers: { $ne: req.user._id },
+            "datingProfile.bio": { $nin: ["", null] },
+            "datingProfile.age": { $gte: 18, $lte: 100 },
+            "datingProfile.gender": { $nin: ["", null] },
+            "datingProfile.interestedIn": { $nin: ["", null] },
+            "datingProfile.city": { $nin: ["", null] },
+            "datingProfile.intentions": { $nin: ["", null] },
+            "datingProfile.interests.0": { $exists: true },
+            "datingProfile.photos.0": { $exists: true },
             ...discoverFilters,
         })
             .select(userSelect)
@@ -222,6 +266,7 @@ export const discoverProfiles = async (req, res) => {
             .limit(limit * 3);
 
         const profiles = candidates
+            .filter((candidate) => isDatingProfileComplete(candidate.datingProfile || {}))
             .filter((candidate) => isMutualPreference(currentUser, candidate))
             .slice(0, limit);
 

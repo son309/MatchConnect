@@ -20,6 +20,7 @@ export const DatingProvider = ({ children }) => {
   const [matches, setMatches] = useState([]);
   const [isDatingLoading, setIsDatingLoading] = useState(false);
   const [isDatingActionLoading, setIsDatingActionLoading] = useState(false);
+  const [discoverRequirement, setDiscoverRequirement] = useState(null);
 
   const { authUser } = useAuth();
   const { socket } = useSocket();
@@ -57,10 +58,18 @@ export const DatingProvider = ({ children }) => {
       );
       const res = await axiosInstance.get("/dating/discover", { params });
       const profiles = Array.isArray(res.data) ? res.data : [];
+      setDiscoverRequirement(null);
       setDiscoverProfiles(profiles);
       return profiles;
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load profiles");
+      const responseData = error.response?.data;
+      if (responseData?.code === "DATING_PROFILE_INCOMPLETE") {
+        setDiscoverRequirement(responseData);
+        setDiscoverProfiles([]);
+      } else {
+        setDiscoverRequirement(null);
+        toast.error(responseData?.message || "Failed to load profiles");
+      }
       return [];
     } finally {
       setIsDatingLoading(false);
@@ -217,6 +226,7 @@ export const DatingProvider = ({ children }) => {
   const value = {
     datingProfile,
     discoverProfiles,
+    discoverRequirement,
     likedYou,
     matches,
     isDatingLoading,

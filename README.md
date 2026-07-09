@@ -113,9 +113,6 @@ ADMIN_EMAILS=admin1@example.com,admin2@example.com
 
 Open a terminal at the project root:
 
-```powershell
-cd C:\Users\Admin\Desktop\Project_new\MatchConnect
-```
 
 Install backend dependencies:
 

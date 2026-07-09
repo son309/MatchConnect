@@ -3,12 +3,13 @@ import {
   Heart,
   Loader2,
   MapPin,
+  PencilLine,
   RefreshCw,
   ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useDating } from "../../../context/DatingContext";
 
@@ -415,6 +416,7 @@ export default function DatingDashboard() {
   const { authUser } = useAuth();
   const {
     discoverProfiles,
+    discoverRequirement,
     likedYou,
     isDatingLoading,
     isDatingActionLoading,
@@ -463,6 +465,20 @@ export default function DatingDashboard() {
             {isDatingLoading ? (
               <div className="flex h-[480px] items-center justify-center bg-white">
                 <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
+              </div>
+            ) : discoverRequirement ? (
+              <div className="flex h-[480px] flex-col items-center justify-center border border-dashed border-rose-200 bg-white px-6 text-center">
+                <PencilLine className="mb-3 h-12 w-12 text-rose-400" />
+                <h2 className="text-lg font-bold text-gray-900">Complete your dating profile</h2>
+                <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
+                  Fill in and save your bio, age, gender, city, intentions, interests, preferences, and at least one dating photo before using Discover.
+                </p>
+                <Link
+                  to="/chat/profile"
+                  className="mt-5 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-600"
+                >
+                  Update profile
+                </Link>
               </div>
             ) : currentProfile ? (
               <SwipeDeck current={currentProfile} next={nextProfile} currentUser={authUser}>
