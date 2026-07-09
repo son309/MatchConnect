@@ -15,7 +15,12 @@ const ACTIVITY_VISIBILITY_KEY = "activityVisible";
 function getSocketBaseUrl() {
     if (import.meta.env.MODE === "development") return "http://localhost:3000";
 
-    return import.meta.env.VITE_SOCKET_URL || window.location.origin;
+    if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL;
+    if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL.replace(/\/api\/?$/, "");
+    }
+
+    return window.location.origin;
 }
 
 function getStoredActivityVisibility() {
