@@ -1,12 +1,14 @@
 import mongoose from "mongoose";
+import Call from "../models/Call.js";
 import DatingAction from "../models/DatingAction.js";
 import DatingMatch from "../models/DatingMatch.js";
+import Message from "../models/Message.js";
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketIds, io } from "../lib/socket.js";
 
 const userSelect =
-    "fullName email profilePic role datingProfile createdAt";
+    "fullName email profilePic role datingProfile datingPreferences createdAt";
 
 const MAX_DATING_PHOTOS = 6;
 
@@ -30,35 +32,57 @@ function normalizeInterests(interests) {
         interests
             .map((interest) => String(interest || "").trim())
             .filter(Boolean)
-            .slice(0, 8)
+            .slice(0, 5)
     )];
 }
 
-function getIncompleteDatingProfileFields(profile = {}) {
+function getDatingPreferences(userOrProfile = {}) {
+    const profile = userOrProfile.datingProfile || userOrProfile;
+    const preferences = userOrProfile.datingPreferences || {};
+
+    return {
+        interestedIn: preferences.interestedIn || profile.interestedIn || "everyone",
+        preferredMinAge: preferences.preferredMinAge ?? profile.preferredMinAge,
+        preferredMaxAge: preferences.preferredMaxAge ?? profile.preferredMaxAge,
+        preferredIntentions: preferences.preferredIntentions ?? profile.preferredIntentions ?? "",
+        preferredEducationLevel: preferences.preferredEducationLevel || "any",
+        preferredChildrenStatus: preferences.preferredChildrenStatus || "any",
+        preferredSmoking: preferences.preferredSmoking || "any",
+        preferredDrinking: preferences.preferredDrinking || "any",
+    };
+}
+
+function getIncompleteDatingProfileFields(profile = {}, preferences = {}) {
     const missingFields = [];
+    const currentPreferences = {
+        ...getDatingPreferences(profile),
+        ...preferences,
+    };
 
     if (!String(profile.bio || "").trim()) missingFields.push("bio");
     if (!Number.isFinite(Number(profile.age)) || Number(profile.age) < 18 || Number(profile.age) > 100) {
         missingFields.push("age");
     }
     if (!String(profile.gender || "").trim()) missingFields.push("gender");
-    if (!String(profile.interestedIn || "").trim()) missingFields.push("interestedIn");
     if (!String(profile.city || "").trim()) missingFields.push("city");
     if (!String(profile.intentions || "").trim()) missingFields.push("intentions");
-    if (!Number.isFinite(Number(profile.preferredMinAge))) missingFields.push("preferredMinAge");
-    if (!Number.isFinite(Number(profile.preferredMaxAge))) missingFields.push("preferredMaxAge");
     if (!Array.isArray(profile.interests) || profile.interests.filter(Boolean).length === 0) {
         missingFields.push("interests");
     }
     if (!Array.isArray(profile.photos) || profile.photos.filter(Boolean).length === 0) {
         missingFields.push("photos");
     }
+    if (!String(currentPreferences.interestedIn || "").trim()) missingFields.push("interestedIn");
+    if (!Number.isFinite(Number(currentPreferences.preferredMinAge))) missingFields.push("preferredMinAge");
+    if (!Number.isFinite(Number(currentPreferences.preferredMaxAge))) missingFields.push("preferredMaxAge");
 
     return missingFields;
 }
 
-function isDatingProfileComplete(profile = {}) {
-    return getIncompleteDatingProfileFields(profile).length === 0;
+function isDatingProfileComplete(userOrProfile = {}) {
+    const profile = userOrProfile.datingProfile || userOrProfile;
+    const preferences = getDatingPreferences(userOrProfile);
+    return getIncompleteDatingProfileFields(profile, preferences).length === 0;
 }
 
 async function normalizePhotos(photos) {
@@ -91,21 +115,45 @@ function sanitizeDatingProfile(body) {
         const age = Number(body.age);
         profile.age = Number.isFinite(age) && age >= 18 && age <= 100 ? age : null;
     }
+    if ("height" in body) {
+        const height = Number(body.height);
+        profile.height = Number.isFinite(height) && height >= 90 && height <= 250 ? height : null;
+    }
     if ("gender" in body) profile.gender = body.gender || "";
-    if ("interestedIn" in body) profile.interestedIn = body.interestedIn || "everyone";
     if ("city" in body) profile.city = String(body.city || "").trim().slice(0, 80);
     if ("intentions" in body) profile.intentions = body.intentions || "";
-    if ("preferredMinAge" in body) profile.preferredMinAge = clampAge(body.preferredMinAge, 18);
-    if ("preferredMaxAge" in body) profile.preferredMaxAge = clampAge(body.preferredMaxAge, 60);
-    if ("preferredMinAge" in body && "preferredMaxAge" in body && profile.preferredMinAge > profile.preferredMaxAge) {
-        const minAge = profile.preferredMinAge;
-        profile.preferredMinAge = profile.preferredMaxAge;
-        profile.preferredMaxAge = minAge;
-    }
-    if ("preferredIntentions" in body) profile.preferredIntentions = body.preferredIntentions || "";
     if ("interests" in body) profile.interests = normalizeInterests(body.interests);
+    if ("jobTitle" in body) profile.jobTitle = String(body.jobTitle || "").trim().slice(0, 80);
+    if ("company" in body) profile.company = String(body.company || "").trim().slice(0, 80);
+    if ("highSchool" in body) profile.highSchool = String(body.highSchool || "").trim().slice(0, 100);
+    if ("university" in body) profile.university = String(body.university || "").trim().slice(0, 100);
+    if ("graduateSchool" in body) profile.graduateSchool = String(body.graduateSchool || "").trim().slice(0, 100);
+    if ("educationLevel" in body) profile.educationLevel = body.educationLevel || "";
+    if ("childrenStatus" in body) profile.childrenStatus = body.childrenStatus || "";
+    if ("smoking" in body) profile.smoking = body.smoking || "";
+    if ("drinking" in body) profile.drinking = body.drinking || "";
 
     return profile;
+}
+
+function sanitizeDatingPreferences(body) {
+    const preferences = {};
+
+    if ("interestedIn" in body) preferences.interestedIn = body.interestedIn || "everyone";
+    if ("preferredMinAge" in body) preferences.preferredMinAge = clampAge(body.preferredMinAge, 18);
+    if ("preferredMaxAge" in body) preferences.preferredMaxAge = clampAge(body.preferredMaxAge, 60);
+    if ("preferredMinAge" in body && "preferredMaxAge" in body && preferences.preferredMinAge > preferences.preferredMaxAge) {
+        const minAge = preferences.preferredMinAge;
+        preferences.preferredMinAge = preferences.preferredMaxAge;
+        preferences.preferredMaxAge = minAge;
+    }
+    if ("preferredIntentions" in body) preferences.preferredIntentions = body.preferredIntentions || "";
+    if ("preferredEducationLevel" in body) preferences.preferredEducationLevel = body.preferredEducationLevel || "any";
+    if ("preferredChildrenStatus" in body) preferences.preferredChildrenStatus = body.preferredChildrenStatus || "any";
+    if ("preferredSmoking" in body) preferences.preferredSmoking = body.preferredSmoking || "any";
+    if ("preferredDrinking" in body) preferences.preferredDrinking = body.preferredDrinking || "any";
+
+    return preferences;
 }
 
 function sortMatchUsers(userIdA, userIdB) {
@@ -132,21 +180,27 @@ function likesGender(preference, gender) {
 function isMutualPreference(currentUser, candidate) {
     const currentProfile = currentUser.datingProfile || {};
     const candidateProfile = candidate.datingProfile || {};
+    const currentPreferences = getDatingPreferences(currentUser);
+    const candidatePreferences = getDatingPreferences(candidate);
 
     return (
-        likesGender(currentProfile.interestedIn, candidateProfile.gender) &&
-        likesGender(candidateProfile.interestedIn, currentProfile.gender)
+        likesGender(currentPreferences.interestedIn, candidateProfile.gender) &&
+        likesGender(candidatePreferences.interestedIn, currentProfile.gender)
     );
 }
 
-function buildDiscoverFilters(query, currentProfile = {}) {
+function buildDiscoverFilters(query, currentPreferences = {}) {
     const filters = {};
-    const minAgeInput = String(query.minAge || currentProfile.preferredMinAge || "").trim();
-    const maxAgeInput = String(query.maxAge || currentProfile.preferredMaxAge || "").trim();
+    const minAgeInput = String(query.minAge || currentPreferences.preferredMinAge || "").trim();
+    const maxAgeInput = String(query.maxAge || currentPreferences.preferredMaxAge || "").trim();
     const minAge = minAgeInput ? Number(minAgeInput) : null;
     const maxAge = maxAgeInput ? Number(maxAgeInput) : null;
     const city = String(query.city || "").trim();
-    const intentions = String(query.intentions || currentProfile.preferredIntentions || "").trim();
+    const intentions = String(query.intentions || currentPreferences.preferredIntentions || "").trim();
+    const educationLevel = String(query.educationLevel || currentPreferences.preferredEducationLevel || "").trim();
+    const childrenStatus = String(query.childrenStatus || currentPreferences.preferredChildrenStatus || "").trim();
+    const smoking = String(query.smoking || currentPreferences.preferredSmoking || "").trim();
+    const drinking = String(query.drinking || currentPreferences.preferredDrinking || "").trim();
 
     if (minAge !== null || maxAge !== null) {
         filters["datingProfile.age"] = {};
@@ -160,6 +214,22 @@ function buildDiscoverFilters(query, currentProfile = {}) {
 
     if (intentions) {
         filters["datingProfile.intentions"] = intentions;
+    }
+
+    if (educationLevel && educationLevel !== "any") {
+        filters["datingProfile.educationLevel"] = educationLevel;
+    }
+
+    if (childrenStatus && childrenStatus !== "any") {
+        filters["datingProfile.childrenStatus"] = childrenStatus;
+    }
+
+    if (smoking && smoking !== "any") {
+        filters["datingProfile.smoking"] = smoking;
+    }
+
+    if (drinking && drinking !== "any") {
+        filters["datingProfile.drinking"] = drinking;
     }
 
     return filters;
@@ -178,12 +248,17 @@ export const getDatingProfile = async (req, res) => {
 export const updateDatingProfile = async (req, res) => {
     try {
         const profile = sanitizeDatingProfile(req.body);
+        const preferences = sanitizeDatingPreferences(req.body);
         if ("photos" in req.body) {
             profile.photos = await normalizePhotos(req.body.photos);
         }
         const updateData = {};
 
         Object.entries(profile).forEach(([key, value]) => {
+            updateData[`datingProfile.${key}`] = value;
+        });
+        Object.entries(preferences).forEach(([key, value]) => {
+            updateData[`datingPreferences.${key}`] = value;
             updateData[`datingProfile.${key}`] = value;
         });
 
@@ -207,9 +282,12 @@ export const discoverProfiles = async (req, res) => {
         await DatingAction.deleteMany({ from: req.user._id, action: "pass" });
 
         const currentUser = await User.findById(req.user._id).select(
-            "datingProfile blockedUsers spammedUsers"
+            "datingProfile datingPreferences blockedUsers spammedUsers"
         );
-        const missingFields = getIncompleteDatingProfileFields(currentUser?.datingProfile || {});
+        const missingFields = getIncompleteDatingProfileFields(
+            currentUser?.datingProfile || {},
+            getDatingPreferences(currentUser || {})
+        );
         if (missingFields.length > 0) {
             return res.status(400).json({
                 code: "DATING_PROFILE_INCOMPLETE",
@@ -219,7 +297,7 @@ export const discoverProfiles = async (req, res) => {
         }
 
         const limit = Math.min(Number(req.query.limit) || 20, 50);
-        const discoverFilters = buildDiscoverFilters(req.query, currentUser.datingProfile || {});
+        const discoverFilters = buildDiscoverFilters(req.query, getDatingPreferences(currentUser));
 
         const [actions, incomingLikes, matches] = await Promise.all([
             DatingAction.find({ from: req.user._id, action: "like" }).select("to"),
@@ -254,7 +332,10 @@ export const discoverProfiles = async (req, res) => {
             "datingProfile.bio": { $nin: ["", null] },
             "datingProfile.age": { $gte: 18, $lte: 100 },
             "datingProfile.gender": { $nin: ["", null] },
-            "datingProfile.interestedIn": { $nin: ["", null] },
+            $or: [
+                { "datingPreferences.interestedIn": { $nin: ["", null] } },
+                { "datingProfile.interestedIn": { $nin: ["", null] } },
+            ],
             "datingProfile.city": { $nin: ["", null] },
             "datingProfile.intentions": { $nin: ["", null] },
             "datingProfile.interests.0": { $exists: true },
@@ -266,7 +347,7 @@ export const discoverProfiles = async (req, res) => {
             .limit(limit * 3);
 
         const profiles = candidates
-            .filter((candidate) => isDatingProfileComplete(candidate.datingProfile || {}))
+            .filter((candidate) => isDatingProfileComplete(candidate))
             .filter((candidate) => isMutualPreference(currentUser, candidate))
             .slice(0, limit);
 
@@ -480,13 +561,27 @@ export const unmatchProfile = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        await DatingMatch.deleteOne({ userA, userB });
-        await DatingAction.deleteMany({
-            $or: [
-                { from: req.user._id, to: targetId },
-                { from: targetId, to: req.user._id },
-            ],
-        });
+        await Promise.all([
+            DatingMatch.deleteOne({ userA, userB }),
+            DatingAction.deleteMany({
+                $or: [
+                    { from: req.user._id, to: targetId },
+                    { from: targetId, to: req.user._id },
+                ],
+            }),
+            Message.deleteMany({
+                $or: [
+                    { senderId: req.user._id, receiverId: targetId },
+                    { senderId: targetId, receiverId: req.user._id },
+                ],
+            }),
+            Call.deleteMany({
+                $or: [
+                    { caller: req.user._id, receiver: targetId },
+                    { caller: targetId, receiver: req.user._id },
+                ],
+            }),
+        ]);
 
         emitToUser(targetId, "dating:unmatch", {
             userId: req.user._id,

@@ -6,6 +6,7 @@ import { socketAuthMiddleware } from "../middleware/socket.auth.middleware.js";
 import Call from "../models/Call.js";
 import DatingMatch from "../models/DatingMatch.js";
 import Message from "../models/Message.js";
+import User from "../models/User.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +22,10 @@ io.use(socketAuthMiddleware);
 
 const userSocketsMap = {};
 const hiddenPresenceUsers = new Set();
+const BLIND_MATCH_DURATION_MS = 10 * 60 * 1000;
+const blindQueue = [];
+const blindSessions = {};
+const blindSessionByUser = {};
 
 export function getReceiverSocketIds(userId) {
   return userSocketsMap[userId] ? Array.from(userSocketsMap[userId]) : [];
@@ -81,6 +86,109 @@ function getCallMessageText(callType, status, duration) {
   };
 
   return `${label} ${statusLabels[status] || status}`;
+}
+
+function sortDatingMatchUsers(userIdA, userIdB) {
+  const first = userIdA.toString();
+  const second = userIdB.toString();
+  return first < second
+    ? { userA: userIdA, userB: userIdB }
+    : { userA: userIdB, userB: userIdA };
+}
+
+function removeFromBlindQueue(userId) {
+  const index = blindQueue.findIndex((entry) => entry.userId === userId);
+  if (index >= 0) blindQueue.splice(index, 1);
+}
+
+function getBlindPartner(session, userId) {
+  return session.participants.find((participantId) => participantId !== userId);
+}
+
+function emitBlindSession(session, event, data) {
+  session.participants.forEach((participantId) => {
+    emitToOneSocket(participantId, event, data);
+  });
+}
+
+async function createBlindDatingMatch(session) {
+  const [firstUserId, secondUserId] = session.participants;
+  const { userA, userB } = sortDatingMatchUsers(firstUserId, secondUserId);
+  const match = await DatingMatch.findOneAndUpdate(
+    { userA, userB },
+    { userA, userB },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  const users = await User.find({ _id: { $in: [firstUserId, secondUserId] } }).select(
+    "fullName email profilePic role datingProfile datingPreferences createdAt"
+  );
+  const usersById = new Map(users.map((user) => [user._id.toString(), user]));
+
+  session.participants.forEach((participantId) => {
+    const partnerId = getBlindPartner(session, participantId);
+    const partner = usersById.get(partnerId);
+    if (!partner) return;
+
+    const payload = {
+      ...partner.toObject(),
+      isDatingMatch: true,
+      matchId: match._id,
+      matchedAt: match.createdAt,
+    };
+
+    emitToUser(participantId, "dating:match", payload);
+    emitToUser(participantId, "blind:matched", {
+      sessionId: session.id,
+      matchId: match._id,
+      partner: payload,
+    });
+  });
+}
+
+function cleanupBlindSession(sessionId, reason = "ended") {
+  const session = blindSessions[sessionId];
+  if (!session) return;
+
+  clearTimeout(session.timeout);
+  session.participants.forEach((participantId) => {
+    delete blindSessionByUser[participantId];
+  });
+  delete blindSessions[sessionId];
+
+  if (reason) {
+    emitBlindSession(session, "blind:ended", { sessionId, reason });
+  }
+}
+
+function createBlindSession(first, second) {
+  const sessionId = `blind-${Date.now()}-${first.userId}-${second.userId}`;
+  const expiresAt = Date.now() + BLIND_MATCH_DURATION_MS;
+  const session = {
+    id: sessionId,
+    participants: [first.userId, second.userId],
+    decisions: {},
+    expiresAt,
+    timeout: null,
+  };
+
+  session.timeout = setTimeout(() => {
+    cleanupBlindSession(sessionId, "expired");
+  }, BLIND_MATCH_DURATION_MS);
+
+  blindSessions[sessionId] = session;
+  session.participants.forEach((participantId) => {
+    blindSessionByUser[participantId] = sessionId;
+  });
+
+  session.participants.forEach((participantId) => {
+    const partnerId = getBlindPartner(session, participantId);
+    emitToOneSocket(participantId, "blind:matched-session", {
+      sessionId,
+      partnerAnonId: partnerId === first.userId ? "A" : "B",
+      expiresAt,
+    });
+  });
 }
 
 async function saveCallRecord(callId, status) {
@@ -306,9 +414,92 @@ io.on("connection", (socket) => {
     emitToUser(receiverId, "user:stop-typing", { senderId: userId });
   });
 
+  socket.on("blind:find", () => {
+    if (blindSessionByUser[userId]) {
+      socket.emit("blind:error", { message: "You are already in a blind match" });
+      return;
+    }
+
+    removeFromBlindQueue(userId);
+
+    const partnerIndex = blindQueue.findIndex((entry) => entry.userId !== userId && isUserOnline(entry.userId));
+    if (partnerIndex >= 0) {
+      const partner = blindQueue.splice(partnerIndex, 1)[0];
+      createBlindSession({ userId, socketId: socket.id }, partner);
+      return;
+    }
+
+    blindQueue.push({ userId, socketId: socket.id, joinedAt: Date.now() });
+    socket.emit("blind:searching");
+  });
+
+  socket.on("blind:cancel-search", () => {
+    removeFromBlindQueue(userId);
+    socket.emit("blind:idle");
+  });
+
+  socket.on("blind:message", ({ sessionId, text }) => {
+    const session = blindSessions[sessionId];
+    if (!session || !session.participants.includes(userId)) return;
+
+    const cleanText = String(text || "").trim().slice(0, 1000);
+    if (!cleanText) return;
+
+    const message = {
+      id: `${sessionId}-${Date.now()}-${userId}`,
+      sessionId,
+      sender: userId,
+      text: cleanText,
+      createdAt: new Date().toISOString(),
+    };
+
+    emitBlindSession(session, "blind:message", message);
+  });
+
+  socket.on("blind:decision", async ({ sessionId, decision }) => {
+    const session = blindSessions[sessionId];
+    if (!session || !session.participants.includes(userId)) return;
+
+    const normalizedDecision = decision === "like" ? "like" : "pass";
+    session.decisions[userId] = normalizedDecision;
+
+    if (normalizedDecision === "pass") {
+      cleanupBlindSession(sessionId, "passed");
+      return;
+    }
+
+    emitToOneSocket(getBlindPartner(session, userId), "blind:partner-decision", {
+      sessionId,
+      decision: "like",
+    });
+
+    const [firstUserId, secondUserId] = session.participants;
+    if (session.decisions[firstUserId] === "like" && session.decisions[secondUserId] === "like") {
+      try {
+        await createBlindDatingMatch(session);
+        cleanupBlindSession(sessionId, null);
+      } catch (error) {
+        console.error("blind:decision create match error:", error);
+        emitBlindSession(session, "blind:error", { message: "Failed to create match" });
+      }
+    }
+  });
+
+  socket.on("blind:leave", ({ sessionId }) => {
+    const session = blindSessions[sessionId || blindSessionByUser[userId]];
+    if (!session || !session.participants.includes(userId)) return;
+    cleanupBlindSession(session.id, "left");
+  });
+
 
   socket.on("disconnect", async () => {
     console.log("A user disconnected", socket.user.fullName);
+
+    removeFromBlindQueue(userId);
+    const blindSessionId = blindSessionByUser[userId];
+    if (blindSessionId) {
+      cleanupBlindSession(blindSessionId, "disconnected");
+    }
 
     if (userSocketsMap[userId]) {
       userSocketsMap[userId].delete(socket.id);

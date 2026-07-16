@@ -117,6 +117,12 @@ const userSchema = new mongoose.Schema({
             max: 100,
             default: null,
         },
+        height: {
+            type: Number,
+            min: 90,
+            max: 250,
+            default: null,
+        },
         gender: {
             type: String,
             enum: ["woman", "man", "nonbinary", "other", ""],
@@ -159,9 +165,103 @@ const userSchema = new mongoose.Schema({
             trim: true,
             maxlength: 32,
         }],
+        jobTitle: {
+            type: String,
+            default: "",
+            maxlength: 80,
+            trim: true,
+        },
+        company: {
+            type: String,
+            default: "",
+            maxlength: 80,
+            trim: true,
+        },
+        highSchool: {
+            type: String,
+            default: "",
+            maxlength: 100,
+            trim: true,
+        },
+        university: {
+            type: String,
+            default: "",
+            maxlength: 100,
+            trim: true,
+        },
+        graduateSchool: {
+            type: String,
+            default: "",
+            maxlength: 100,
+            trim: true,
+        },
+        educationLevel: {
+            type: String,
+            enum: ["high-school", "college", "bachelor", "master", "phd", "other", ""],
+            default: "",
+        },
+        childrenStatus: {
+            type: String,
+            enum: ["have-children", "dont-have-children", "want-children", "dont-want-children", "open-to-children", "prefer-not-say", ""],
+            default: "",
+        },
+        smoking: {
+            type: String,
+            enum: ["never", "socially", "occasionally", "regularly", "prefer-not-say", ""],
+            default: "",
+        },
+        drinking: {
+            type: String,
+            enum: ["never", "socially", "occasionally", "regularly", "prefer-not-say", ""],
+            default: "",
+        },
         photos: [{
             type: String,
         }],
+    },
+    datingPreferences: {
+        interestedIn: {
+            type: String,
+            enum: ["women", "men", "everyone", ""],
+            default: "everyone",
+        },
+        preferredMinAge: {
+            type: Number,
+            min: 18,
+            max: 100,
+            default: 18,
+        },
+        preferredMaxAge: {
+            type: Number,
+            min: 18,
+            max: 100,
+            default: 60,
+        },
+        preferredIntentions: {
+            type: String,
+            enum: ["relationship", "casual", "friends", "not-sure", ""],
+            default: "",
+        },
+        preferredEducationLevel: {
+            type: String,
+            enum: ["any", "high-school", "college", "bachelor", "master", "phd", "other"],
+            default: "any",
+        },
+        preferredChildrenStatus: {
+            type: String,
+            enum: ["any", "have-children", "dont-have-children", "want-children", "dont-want-children", "open-to-children", "prefer-not-say"],
+            default: "any",
+        },
+        preferredSmoking: {
+            type: String,
+            enum: ["any", "never", "socially", "occasionally", "regularly", "prefer-not-say"],
+            default: "any",
+        },
+        preferredDrinking: {
+            type: String,
+            enum: ["any", "never", "socially", "occasionally", "regularly", "prefer-not-say"],
+            default: "any",
+        },
     },
 },
     { timestamps: true }

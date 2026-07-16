@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { axiosInstance } from "../../../lib/axios";
 import { useAuth } from "../../../context/AuthContext";
 
-export default function SidebarHeader({ filter, setFilter, searchQuery, setSearchQuery, onSelectChat, onSelectMessage }) {
+export default function SidebarHeader({ filter, setFilter, searchQuery, setSearchQuery, allowSelfChat = true, onSelectChat, onSelectMessage }) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState({ users: [], messages: [] });
   const [isSearching, setIsSearching] = useState(false);
@@ -39,11 +39,13 @@ export default function SidebarHeader({ filter, setFilter, searchQuery, setSearc
       let friends = Array.isArray(usersRes.data) ? usersRes.data : [];
       
       const queryLower = query.toLowerCase().trim();
-      const isSearchingSelf = 
-        "my cloud".includes(queryLower) || 
-        "me".includes(queryLower) ||
-        "cloud".includes(queryLower) ||
-        authUser?.fullName.toLowerCase().includes(queryLower);
+      const isSearchingSelf =
+        allowSelfChat && (
+          "my cloud".includes(queryLower) ||
+          "me".includes(queryLower) ||
+          "cloud".includes(queryLower) ||
+          authUser?.fullName.toLowerCase().includes(queryLower)
+        );
 
       if (isSearchingSelf && authUser) {
         friends = friends.filter(u => u._id !== authUser._id);
@@ -55,14 +57,23 @@ export default function SidebarHeader({ filter, setFilter, searchQuery, setSearc
 
       setSearchResults({
         users: friends.slice(0, 5),
-        messages: Array.isArray(messagesRes.data) ? messagesRes.data.slice(0, 10) : [],
+        messages: Array.isArray(messagesRes.data)
+          ? messagesRes.data
+            .filter((message) => {
+              if (allowSelfChat) return true;
+              const senderId = message.senderId?._id || message.senderId;
+              const receiverId = message.receiverId?._id || message.receiverId;
+              return !(senderId === authUser?._id && receiverId === authUser?._id);
+            })
+            .slice(0, 10)
+          : [],
       });
     } catch (error) {
       console.error("Search error:",);
     } finally {
       setIsSearching(false);
     }
-  }, [authUser]); 
+  }, [allowSelfChat, authUser]);
 
   const handleInputChange = (e) => {
     const value = e.target.value;

@@ -1,4 +1,5 @@
-import { Compass, Heart, LogOut, MessageCircle, Settings, ShieldCheck, User } from "lucide-react";
+import { useEffect } from "react";
+import { Compass, Heart, LogOut, MessageCircle, Settings, ShieldCheck, Shuffle, SlidersHorizontal, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
 import { useDating } from "../../context/DatingContext";
@@ -41,17 +42,26 @@ const NavItem = ({ icon: Icon, to, onClick, defaultActive = false, badgeCount = 
 
 export default function NavigationSidebar() {
   const { authUser, logout } = useAuth();
-  const { homeStats } = useChat();
+  const { homeStats, getHomeStats } = useChat();
   const { likedYou } = useDating();
   const navigate = useNavigate();
   const isAdmin = authUser?.role === "admin";
 
   const likedYouCount = isAdmin ? 0 : likedYou.length;
-  const unreadMatchesCount = isAdmin
+
+  useEffect(() => {
+    if (!isAdmin) {
+      getHomeStats();
+    }
+  }, [getHomeStats, isAdmin]);
+
+  const matchesBadgeCount = isAdmin
     ? 0
     : (homeStats?.chats || []).reduce((total, chat) => {
-        if (!chat.isDatingMatch && !chat.isMatch) return total;
-        return total + (chat.unreadCount || 0);
+        const isDatingMatch = chat.isDatingMatch || chat.isMatch;
+        const hasConversation = Boolean(chat.lastMessage || chat.lastMessageTime);
+        if (!isDatingMatch || chat.isSelfChat) return total;
+        return total + (chat.unreadCount || 0) + (hasConversation ? 0 : 1);
       }, 0);
 
   const handleLogout = async () => {
@@ -84,8 +94,10 @@ export default function NavigationSidebar() {
           <>
             <NavItem icon={Compass} to="/chat/dating?tab=discover" defaultActive />
             <NavItem icon={Heart} to="/chat/dating?tab=liked-you" badgeCount={likedYouCount} />
-            <NavItem icon={MessageCircle} to="/chat/matches" badgeCount={unreadMatchesCount} />
-            <NavItem icon={User} to="/chat/profile" />
+            <NavItem icon={MessageCircle} to="/chat/matches" badgeCount={matchesBadgeCount} />
+            <NavItem icon={Shuffle} to="/chat/blind-match" />
+            <NavItem icon={User} to="/chat/dating-profile" />
+            <NavItem icon={SlidersHorizontal} to="/chat/dating-preferences" />
           </>
         )}
       </div>

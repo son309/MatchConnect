@@ -9,9 +9,12 @@ import ConversationItem from "./ConversationItem";
 export default function ConversationSidebar({
   title = "Messages",
   selectedChat,
+  activePanel,
   onChatSelect,
+  onNewMatchesSelect,
   onHighlightMessage,
 }) {
+  const isMatchesView = title === "Matches";
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -54,17 +57,27 @@ export default function ConversationSidebar({
     [onHighlightMessage]
   );
 
-  const { allChats, messageRequests, spamChats } = useMemo(() => {
+  const { allChats, messageRequests, spamChats, newMatches } = useMemo(() => {
     const friendChats = [];
     const nonFriendChats = [];
     const messageRequests = [];
     const spamChats = [];
+    const newMatches = [];
 
     chats.forEach((chat) => {
+      if (isMatchesView && chat.isSelfChat) return;
+
       const isFriend = friends.some((friend) => friend._id === chat._id) || chat.isSelfChat;
       const isDatingMatch = chat.isDatingMatch || chat.isMatch;
       const isBlocked = blockedUsers.some((blocked) => blocked._id === chat._id);
       const isSpammed = spammedUsers.some((spammed) => spammed._id === chat._id);
+      const hasConversation = Boolean(chat.lastMessage || chat.lastMessageTime);
+
+      if (isMatchesView && !isDatingMatch) return;
+      if (isMatchesView && isDatingMatch && !hasConversation) {
+        newMatches.push(chat);
+        return;
+      }
 
       if (isBlocked || isSpammed) {
         if (filter === "unread" && chat.lastMessage) {
@@ -85,8 +98,9 @@ export default function ConversationSidebar({
       allChats: [...friendChats, ...nonFriendChats],
       messageRequests,
       spamChats,
+      newMatches,
     };
-  }, [chats, friends, blockedUsers, spammedUsers, filter]);
+  }, [chats, friends, blockedUsers, spammedUsers, filter, isMatchesView]);
 
   const matchesSearch = useCallback(
     (chat) => {
@@ -105,12 +119,20 @@ export default function ConversationSidebar({
     return matchesFilter && matchesSearch(chat);
   });
 
+  const filteredNewMatches = newMatches.filter(matchesSearch);
   const filteredMessageRequests = messageRequests.filter(matchesSearch);
   const filteredSpamChats = spamChats.filter(matchesSearch);
 
   const selectChat = (chat) => {
     onChatSelect(chat);
     setSearchQuery("");
+  };
+
+  const selectNewMatches = () => {
+    if (onNewMatchesSelect) {
+      onNewMatchesSelect(newMatches);
+      setSearchQuery("");
+    }
   };
 
   return (
@@ -124,11 +146,28 @@ export default function ConversationSidebar({
         setFilter={setFilter}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        allowSelfChat={!isMatchesView}
         onSelectChat={handleSelectChat}
         onSelectMessage={handleSelectMessage}
       />
 
       <div className="flex-1 overflow-y-auto pt-2 pb-4 custom-scrollbar">
+        {isMatchesView && (
+          <div className="mb-3">
+            <ConversationItem
+              chat={{
+                _id: "new-matches-hub",
+                isNewMatchesHub: true,
+                count: newMatches.length,
+                lastMessage: `${newMatches.length} new match${newMatches.length === 1 ? "" : "es"}`,
+              }}
+              isActive={activePanel === "newMatches"}
+              onClick={selectNewMatches}
+            />
+            <div className="border-b border-gray-200 mx-3 mt-2" />
+          </div>
+        )}
+
         {filteredMessageRequests.length > 0 && (
           <div className="mb-3">
             <div className="px-3 py-2 flex items-center gap-2">
@@ -178,10 +217,10 @@ export default function ConversationSidebar({
 
         {filteredChats.length > 0 && (
           <>
-            {filteredMessageRequests.length > 0 && (
+            {(filteredMessageRequests.length > 0 || filteredNewMatches.length > 0) && (
               <div className="px-3 py-2">
                 <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Chats
+                  {isMatchesView ? "Active Chats" : "Chats"}
                 </h3>
               </div>
             )}
@@ -196,9 +235,9 @@ export default function ConversationSidebar({
           </>
         )}
 
-        {filteredChats.length === 0 && filteredMessageRequests.length === 0 && filteredSpamChats.length === 0 && (
+        {filteredChats.length === 0 && filteredNewMatches.length === 0 && filteredMessageRequests.length === 0 && filteredSpamChats.length === 0 && (
           <div className="text-center text-gray-400 text-xs mt-10">
-            {searchQuery ? "Not found" : "No messages yet"}
+            {searchQuery ? "Not found" : isMatchesView ? "No matches yet" : "No messages yet"}
           </div>
         )}
       </div>

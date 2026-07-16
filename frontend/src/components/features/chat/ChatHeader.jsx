@@ -28,6 +28,7 @@ export default function ChatHeader({
   isInfoSidebarOpen,
   onToggleSearch,
   isSearchOpen,
+  onProfileClick,
 }) {
   const { onlineUsers } = useSocket();
   const { authUser } = useAuth();
@@ -65,6 +66,11 @@ export default function ChatHeader({
     if (!chat || !authUser || isSelfChat) return;
     const receiverId = chat.id || chat._id;
     OpenCallWindow({ name: chat.fullName, avatar: avatarUrl, id: receiverId, video: isVideo ? "true" : "false", caller: "true" });
+  };
+
+  const handleOpenProfile = () => {
+    if (!chat || isSelfChat || !onProfileClick) return;
+    onProfileClick(chat);
   };
 
   useEffect(() => {
@@ -150,20 +156,34 @@ export default function ChatHeader({
               <Cloud size={20} className="text-white" />
             </div>
           ) : (
-            <img src={avatarUrl} alt={chat.fullName} className="h-10 w-10 rounded-full border object-cover" draggable={false} />
+            <button
+              type="button"
+              onClick={handleOpenProfile}
+              className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border transition hover:ring-2 hover:ring-pink-200"
+              title="View profile"
+            >
+              <img src={avatarUrl} alt={chat.fullName} className="h-full w-full object-cover" draggable={false} />
+            </button>
           )}
 
-          <div>
-            <h3 className="text-sm font-bold text-gray-800">
-              {isSelfChat ? "Cloud" : chat.fullName}
-            </h3>
-            {!isSelfChat && (
+          {isSelfChat ? (
+            <div>
+              <h3 className="text-sm font-bold text-gray-800">Cloud</h3>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleOpenProfile}
+              className="rounded-lg px-1 text-left transition hover:bg-pink-50"
+              title="View profile"
+            >
+              <h3 className="text-sm font-bold text-gray-800">{chat.fullName}</h3>
               <p className={`flex items-center gap-1 text-xs ${isOnline ? "text-green-500" : "text-gray-400"}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-300"}`}></span>
                 {isOnline ? "Online" : "Offline"}
               </p>
-            )}
-          </div>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-1">

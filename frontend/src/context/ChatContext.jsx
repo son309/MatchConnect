@@ -90,7 +90,7 @@ export const ChatProvider = ({ children }) => {
                     ...normalizedUser,
                     profilePic: isSelf ? "https://cdn-icons-png.flaticon.com/512/4144/4144099.png" : (user.profilePic || user.avatar),
                     lastMessage: "",
-                    lastMessageTime: new Date().toISOString(),
+                    lastMessageTime: user.lastMessageTime || null,
                     unreadCount: 0,
                     isOnline: true,
                     isSelfChat: isSelf,

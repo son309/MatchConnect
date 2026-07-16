@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Baby,
+  Briefcase,
   Camera,
+  Cigarette,
+  GraduationCap,
   Heart,
   ImagePlus,
   Loader2,
   Mail,
   MapPin,
   Phone,
+  Ruler,
   Save,
   Star,
   ShieldCheck,
@@ -15,6 +20,7 @@ import {
   Tags,
   Trash2,
   User,
+  Wine,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
@@ -35,6 +41,33 @@ const DATING_IMAGE_SIZE = 1600;
 const IMAGE_QUALITY = 0.82;
 const AGE_MIN = 18;
 const AGE_MAX = 100;
+const MAX_INTERESTS = 5;
+const SUGGESTED_INTERESTS = [
+  "🎸 Playing guitar",
+  "🎧 Music",
+  "🎬 Movies",
+  "☕ Coffee",
+  "🍜 Food",
+  "✈️ Travel",
+  "📚 Reading",
+  "🏃 Running",
+  "🏋️ Fitness",
+  "🎮 Gaming",
+  "📷 Photography",
+  "🐶 Pets",
+  "🎨 Art",
+  "🧘 Meditation",
+  "💃 Dancing",
+  "🍳 Cooking",
+  "🏕️ Camping",
+  "⚽ Football",
+  "🏀 Basketball",
+  "🌱 Gardening",
+  "🎤 Karaoke",
+  "🧩 Board games",
+  "🏖️ Beach",
+  "🌃 Night walks",
+];
 
 function compressImageFile(file, maxSize) {
   if (!file.type.startsWith("image/")) {
@@ -88,8 +121,8 @@ function getProfileCompletion({ authUser, formData, datingPhotos, previewUrl }) 
     { label: "City", done: Boolean(formData.city.trim()) },
     { label: "Intentions", done: Boolean(formData.intentions) },
     { label: "Bio", done: Boolean(formData.bio.trim()) },
-    { label: "Interests", done: Boolean(formData.interestsText.trim()) },
-    { label: "Preferred Intentions", done: Boolean(formData.preferredIntentions) },
+    { label: "Interests", done: formData.interests.length > 0 },
+    { label: "Interested In", done: Boolean(formData.interestedIn) },
   ];
   const completed = checks.filter((item) => item.done).length;
 
@@ -147,32 +180,32 @@ function DualAgeRangeSlider({ minValue, maxValue, onChange }) {
   );
 }
 
-function getMissingRequiredFields({ authUser, formData, datingPhotos, previewUrl }) {
+function getMissingRequiredFields({ authUser, formData, datingPhotos, previewUrl, scope = "all" }) {
   const age = Number(formData.age);
-  const interests = formData.interestsText
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  const checks = [
+  const profileChecks = [
     { label: "Avatar", done: Boolean(previewUrl || authUser?.profilePic) },
     { label: "Dating photos", done: datingPhotos.length > 0 },
     { label: "Full name", done: Boolean(formData.fullName.trim()) },
     { label: "Phone number", done: Boolean(formData.phone.trim()) },
     { label: "Age", done: Number.isFinite(age) && age >= AGE_MIN && age <= AGE_MAX },
     { label: "Gender", done: Boolean(formData.gender) },
-    { label: "Interested In", done: Boolean(formData.interestedIn) },
     { label: "City", done: Boolean(formData.city.trim()) },
     { label: "Intentions", done: Boolean(formData.intentions) },
     { label: "Bio", done: Boolean(formData.bio.trim()) },
-    { label: "Interests", done: interests.length > 0 },
-    { label: "Preferred Intentions", done: Boolean(formData.preferredIntentions) },
+    { label: "Interests", done: formData.interests.length > 0 },
+  ];
+  const preferenceChecks = [
+    { label: "Interested In", done: Boolean(formData.interestedIn) },
+  ];
+  const checks = [
+    ...(scope !== "preferences" ? profileChecks : []),
+    ...(scope !== "profile" ? preferenceChecks : []),
   ];
 
   return checks.filter((item) => !item.done).map((item) => item.label);
 }
 
-export default function ProfileSettings() {
+export default function ProfileSettings({ view = "all" }) {
   const { authUser, isUpdatingProfile, updateProfile, setAuthUser, requestProfileVerification } = useAuth();
   const { isDatingActionLoading, updateDatingProfile } = useDating();
 
@@ -180,6 +213,7 @@ export default function ProfileSettings() {
     fullName: "",
     phone: "",
     age: "",
+    height: "",
     gender: "",
     interestedIn: "everyone",
     city: "",
@@ -187,8 +221,22 @@ export default function ProfileSettings() {
     preferredMinAge: 18,
     preferredMaxAge: 60,
     preferredIntentions: "",
+    preferredEducationLevel: "any",
+    preferredChildrenStatus: "any",
+    preferredSmoking: "any",
+    preferredDrinking: "any",
     bio: "",
-    interestsText: "",
+    interests: [],
+    interestQuery: "",
+    jobTitle: "",
+    company: "",
+    highSchool: "",
+    university: "",
+    graduateSchool: "",
+    educationLevel: "",
+    childrenStatus: "",
+    smoking: "",
+    drinking: "",
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -201,21 +249,35 @@ export default function ProfileSettings() {
     if (!authUser) return;
 
     const dating = authUser.datingProfile || {};
+    const preferences = authUser.datingPreferences || {};
     setFormData({
       fullName: authUser.fullName || "",
       phone: authUser.phone || "",
       age: dating.age || "",
+      height: dating.height || "",
       gender: dating.gender || "",
-      interestedIn: dating.interestedIn || "everyone",
+      interestedIn: preferences.interestedIn || dating.interestedIn || "everyone",
       city: dating.city || "",
       intentions: dating.intentions || "",
-      preferredMinAge: dating.preferredMinAge || 18,
-      preferredMaxAge: dating.preferredMaxAge || 60,
-      preferredIntentions: dating.preferredIntentions || "",
+      preferredMinAge: preferences.preferredMinAge || dating.preferredMinAge || 18,
+      preferredMaxAge: preferences.preferredMaxAge || dating.preferredMaxAge || 60,
+      preferredIntentions: preferences.preferredIntentions || dating.preferredIntentions || "",
+      preferredEducationLevel: preferences.preferredEducationLevel || "any",
+      preferredChildrenStatus: preferences.preferredChildrenStatus || "any",
+      preferredSmoking: preferences.preferredSmoking || "any",
+      preferredDrinking: preferences.preferredDrinking || "any",
       bio: dating.bio || "",
-      interestsText: Array.isArray(dating.interests)
-        ? dating.interests.join(", ")
-        : "",
+      interests: Array.isArray(dating.interests) ? dating.interests.slice(0, MAX_INTERESTS) : [],
+      interestQuery: "",
+      jobTitle: dating.jobTitle || "",
+      company: dating.company || "",
+      highSchool: dating.highSchool || "",
+      university: dating.university || "",
+      graduateSchool: dating.graduateSchool || "",
+      educationLevel: dating.educationLevel || "",
+      childrenStatus: dating.childrenStatus || "",
+      smoking: dating.smoking || "",
+      drinking: dating.drinking || "",
     });
     setDatingPhotos(
       Array.isArray(dating.photos)
@@ -238,6 +300,39 @@ export default function ProfileSettings() {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const addInterest = (interest) => {
+    const cleanInterest = String(interest || "").trim();
+    if (!cleanInterest) return;
+
+    setFormData((prev) => {
+      const exists = prev.interests.some(
+        (item) => item.toLowerCase() === cleanInterest.toLowerCase()
+      );
+      if (exists || prev.interests.length >= MAX_INTERESTS) {
+        return { ...prev, interestQuery: "" };
+      }
+
+      return {
+        ...prev,
+        interests: [...prev.interests, cleanInterest],
+        interestQuery: "",
+      };
+    });
+  };
+
+  const removeInterest = (interest) => {
+    setFormData((prev) => ({
+      ...prev,
+      interests: prev.interests.filter((item) => item !== interest),
+    }));
+  };
+
+  const handleInterestKeyDown = (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addInterest(formData.interestQuery);
   };
 
   const handleAgeRangeChange = (field, value) => {
@@ -325,7 +420,7 @@ export default function ProfileSettings() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const missingFields = getMissingRequiredFields({ authUser, formData, datingPhotos, previewUrl });
+    const missingFields = getMissingRequiredFields({ authUser, formData, datingPhotos, previewUrl, scope: view });
     if (missingFields.length > 0) {
       toast.error(`Please complete your profile before saving: ${missingFields.slice(0, 4).join(", ")}${missingFields.length > 4 ? "..." : ""}`);
       return;
@@ -346,6 +441,7 @@ export default function ProfileSettings() {
 
     const updatedUser = await updateDatingProfile({
       age: formData.age,
+      height: formData.height,
       gender: formData.gender,
       interestedIn: formData.interestedIn,
       city: formData.city,
@@ -353,12 +449,22 @@ export default function ProfileSettings() {
       preferredMinAge: formData.preferredMinAge,
       preferredMaxAge: formData.preferredMaxAge,
       preferredIntentions: formData.preferredIntentions,
+      preferredEducationLevel: formData.preferredEducationLevel,
+      preferredChildrenStatus: formData.preferredChildrenStatus,
+      preferredSmoking: formData.preferredSmoking,
+      preferredDrinking: formData.preferredDrinking,
       bio: formData.bio,
       photos,
-      interests: formData.interestsText
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
+      interests: formData.interests,
+      jobTitle: formData.jobTitle,
+      company: formData.company,
+      highSchool: formData.highSchool,
+      university: formData.university,
+      graduateSchool: formData.graduateSchool,
+      educationLevel: formData.educationLevel,
+      childrenStatus: formData.childrenStatus,
+      smoking: formData.smoking,
+      drinking: formData.drinking,
     });
 
     if (updatedUser) setAuthUser(updatedUser);
@@ -383,24 +489,44 @@ export default function ProfileSettings() {
   }
 
   const isSaving = isUpdatingProfile || isDatingActionLoading;
+  const showDatingProfile = view !== "preferences";
+  const showDatingPreferences = view !== "profile";
+  const pageTitle = view === "preferences" ? "Dating Preferences" : "Dating Profile";
+  const pageDescription = view === "preferences"
+    ? "Control who appears in Discover"
+    : "Manage how your profile appears to others";
   const profileCompletion = getProfileCompletion({
     authUser,
     formData,
     datingPhotos,
     previewUrl,
   });
+  const interestQuery = formData.interestQuery.trim().toLowerCase();
+  const selectedInterestNames = formData.interests.map((item) => item.toLowerCase());
+  const filteredSuggestedInterests = SUGGESTED_INTERESTS.filter((interest) => {
+    const normalizedInterest = interest.toLowerCase();
+    return (
+      !selectedInterestNames.includes(normalizedInterest) &&
+      (!interestQuery || normalizedInterest.includes(interestQuery))
+    );
+  }).slice(0, 12);
+  const canAddTypedInterest =
+    formData.interestQuery.trim() &&
+    formData.interests.length < MAX_INTERESTS &&
+    !selectedInterestNames.includes(formData.interestQuery.trim().toLowerCase());
 
   return (
     <div className="flex h-full flex-col bg-white md:bg-transparent">
       <div className="sticky top-0 z-10 border-b border-gray-100 bg-white px-4 py-4 sm:px-8 sm:py-6">
-        <h3 className="text-lg font-bold text-gray-900 sm:text-xl">Profile</h3>
+        <h3 className="text-lg font-bold text-gray-900 sm:text-xl">{pageTitle}</h3>
         <p className="mt-0.5 text-xs text-gray-500 sm:text-sm">
-          Account and dating profile
+          {pageDescription}
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
         <form onSubmit={handleSubmit} className="max-w-3xl space-y-8">
+          {showDatingProfile && (
           <section className="rounded-lg border border-pink-100 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -426,6 +552,8 @@ export default function ProfileSettings() {
               </p>
             )}
           </section>
+          )}
+          {showDatingProfile && (
           <section className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
@@ -468,7 +596,9 @@ export default function ProfileSettings() {
               </div>
             </div>
           </section>
+          )}
 
+          {showDatingProfile && (
           <div className="space-y-6 border-b border-gray-100 pb-6">
 
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
@@ -591,7 +721,9 @@ export default function ProfileSettings() {
               </div>
             </div>
           </div>
+          )}
 
+          {showDatingProfile && (
           <section className="space-y-5">
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-gray-400" />
@@ -645,11 +777,13 @@ export default function ProfileSettings() {
               </label>
             </div>
           </section>
+          )}
 
+          {showDatingProfile && (
           <section className="space-y-5">
             <div className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-pink-500" />
-              <h4 className="text-sm font-bold text-gray-900">Dating</h4>
+              <h4 className="text-sm font-bold text-gray-900">Basic Information</h4>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -665,6 +799,25 @@ export default function ProfileSettings() {
                   onChange={(e) => handleChange("age", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
                 />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Height
+                </span>
+                <div className="relative">
+                  <Ruler className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="number"
+                    min="90"
+                    max="250"
+                    value={formData.height}
+                    onChange={(e) => handleChange("height", e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-12 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                    placeholder="170"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">cm</span>
+                </div>
               </label>
 
               <label className="block">
@@ -700,21 +853,6 @@ export default function ProfileSettings() {
                 </select>
               </label>
 
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Interested In
-                </span>
-                <select
-                  value={formData.interestedIn}
-                  onChange={(e) => handleChange("interestedIn", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                >
-                  <option value="everyone">Everyone</option>
-                  <option value="women">Women</option>
-                  <option value="men">Men</option>
-                </select>
-              </label>
-
               <label className="block md:col-span-2">
                 <span className="mb-1.5 block text-sm font-medium text-gray-700">
                   Intentions
@@ -746,27 +884,371 @@ export default function ProfileSettings() {
                 />
               </label>
 
-              <label className="block md:col-span-2">
-                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <div className="block md:col-span-2">
+                <span className="mb-1.5 flex items-center justify-between gap-2 text-sm font-medium text-gray-700">
+                  <span className="flex items-center gap-2">
                   <Tags className="h-4 w-4 text-gray-400" />
                   Interests
+                  </span>
+                  <span className="text-xs font-semibold text-gray-400">
+                    {formData.interests.length}/{MAX_INTERESTS}
+                  </span>
+                </span>
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  {formData.interests.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {formData.interests.map((interest) => (
+                        <button
+                          key={interest}
+                          type="button"
+                          onClick={() => removeInterest(interest)}
+                          className="inline-flex items-center gap-2 rounded-full bg-pink-500 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-pink-600"
+                          title="Remove interest"
+                        >
+                          {interest}
+                          <span className="grid h-4 w-4 place-items-center rounded-full bg-white/90 text-xs font-bold text-pink-500">
+                            x
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <Tags className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.interestQuery}
+                      onChange={(e) => handleChange("interestQuery", e.target.value)}
+                      onKeyDown={handleInterestKeyDown}
+                      disabled={formData.interests.length >= MAX_INTERESTS}
+                      className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-4 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 disabled:bg-gray-50 disabled:text-gray-400"
+                      placeholder={
+                        formData.interests.length >= MAX_INTERESTS
+                          ? "You can choose up to 5 interests"
+                          : "Search or type an interest"
+                      }
+                    />
+                  </div>
+
+                  {canAddTypedInterest && (
+                    <button
+                      type="button"
+                      onClick={() => addInterest(formData.interestQuery)}
+                      className="mt-3 rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-xs font-semibold text-pink-600 transition hover:bg-pink-100"
+                    >
+                      Add "{formData.interestQuery.trim()}"
+                    </button>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {filteredSuggestedInterests.map((interest) => (
+                      <button
+                        key={interest}
+                        type="button"
+                        onClick={() => addInterest(interest)}
+                        disabled={formData.interests.length >= MAX_INTERESTS}
+                        className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {interest}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+          )}
+
+          {showDatingProfile && (
+          <section className="space-y-5">
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-pink-500" />
+              <h4 className="text-sm font-bold text-gray-900">Work and Education</h4>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Job Title
                 </span>
                 <input
                   type="text"
-                  value={formData.interestsText}
-                  onChange={(e) => handleChange("interestsText", e.target.value)}
+                  value={formData.jobTitle}
+                  onChange={(e) => handleChange("jobTitle", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                  placeholder="music, coffee, travel"
+                  placeholder="Software Engineer"
+                  maxLength={80}
                 />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Company
+                </span>
+                <input
+                  type="text"
+                  value={formData.company}
+                  onChange={(e) => handleChange("company", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                  placeholder="Company name"
+                  maxLength={80}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  High School
+                </span>
+                <input
+                  type="text"
+                  value={formData.highSchool}
+                  onChange={(e) => handleChange("highSchool", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                  placeholder="High school"
+                  maxLength={100}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  University
+                </span>
+                <input
+                  type="text"
+                  value={formData.university}
+                  onChange={(e) => handleChange("university", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                  placeholder="University"
+                  maxLength={100}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Graduate School
+                </span>
+                <input
+                  type="text"
+                  value={formData.graduateSchool}
+                  onChange={(e) => handleChange("graduateSchool", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                  placeholder="Graduate school"
+                  maxLength={100}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <GraduationCap className="h-4 w-4 text-gray-400" />
+                  Education Level
+                </span>
+                <select
+                  value={formData.educationLevel}
+                  onChange={(e) => handleChange("educationLevel", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="">Select level</option>
+                  <option value="high-school">High school</option>
+                  <option value="college">College</option>
+                  <option value="bachelor">Bachelor's degree</option>
+                  <option value="master">Master's degree</option>
+                  <option value="phd">PhD</option>
+                  <option value="other">Other</option>
+                </select>
               </label>
             </div>
           </section>
+          )}
+
+          {showDatingProfile && (
+          <section className="space-y-5">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-pink-500" />
+              <h4 className="text-sm font-bold text-gray-900">Lifestyle</h4>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Baby className="h-4 w-4 text-gray-400" />
+                  Children
+                </span>
+                <select
+                  value={formData.childrenStatus}
+                  onChange={(e) => handleChange("childrenStatus", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="">Select</option>
+                  <option value="have-children">Have children</option>
+                  <option value="dont-have-children">Do not have children</option>
+                  <option value="want-children">Want children</option>
+                  <option value="dont-want-children">Do not want children</option>
+                  <option value="open-to-children">Open to children</option>
+                  <option value="prefer-not-say">Prefer not to say</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Cigarette className="h-4 w-4 text-gray-400" />
+                  Smoking
+                </span>
+                <select
+                  value={formData.smoking}
+                  onChange={(e) => handleChange("smoking", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="">Select</option>
+                  <option value="never">Never</option>
+                  <option value="socially">Socially</option>
+                  <option value="occasionally">Occasionally</option>
+                  <option value="regularly">Regularly</option>
+                  <option value="prefer-not-say">Prefer not to say</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Wine className="h-4 w-4 text-gray-400" />
+                  Drinking
+                </span>
+                <select
+                  value={formData.drinking}
+                  onChange={(e) => handleChange("drinking", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="">Select</option>
+                  <option value="never">Never</option>
+                  <option value="socially">Socially</option>
+                  <option value="occasionally">Occasionally</option>
+                  <option value="regularly">Regularly</option>
+                  <option value="prefer-not-say">Prefer not to say</option>
+                </select>
+              </label>
+            </div>
+          </section>
+          )}
 
 
+          {showDatingPreferences && (
           <section className="space-y-5 rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="h-5 w-5 text-pink-500" />
-              <h4 className="text-sm font-bold text-gray-900">Discovery Preferences</h4>
+              <h4 className="text-sm font-bold text-gray-900">Dating Preferences</h4>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Interested In
+                </span>
+                <select
+                  value={formData.interestedIn}
+                  onChange={(e) => handleChange("interestedIn", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="everyone">Everyone</option>
+                  <option value="women">Women</option>
+                  <option value="men">Men</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Preferred Intentions
+                </span>
+                <select
+                  value={formData.preferredIntentions}
+                  onChange={(e) => handleChange("preferredIntentions", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="">Any</option>
+                  <option value="relationship">Relationship</option>
+                  <option value="casual">Casual</option>
+                  <option value="friends">Friends</option>
+                  <option value="not-sure">Not sure</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <GraduationCap className="h-4 w-4 text-gray-400" />
+                  Education Level
+                </span>
+                <select
+                  value={formData.preferredEducationLevel}
+                  onChange={(e) => handleChange("preferredEducationLevel", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="any">Any</option>
+                  <option value="high-school">High school</option>
+                  <option value="college">College</option>
+                  <option value="bachelor">Bachelor's degree</option>
+                  <option value="master">Master's degree</option>
+                  <option value="phd">PhD</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Baby className="h-4 w-4 text-gray-400" />
+                  Children
+                </span>
+                <select
+                  value={formData.preferredChildrenStatus}
+                  onChange={(e) => handleChange("preferredChildrenStatus", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="any">Any</option>
+                  <option value="have-children">Have children</option>
+                  <option value="dont-have-children">Do not have children</option>
+                  <option value="want-children">Want children</option>
+                  <option value="dont-want-children">Do not want children</option>
+                  <option value="open-to-children">Open to children</option>
+                  <option value="prefer-not-say">Prefer not to say</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Cigarette className="h-4 w-4 text-gray-400" />
+                  Smoking
+                </span>
+                <select
+                  value={formData.preferredSmoking}
+                  onChange={(e) => handleChange("preferredSmoking", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="any">Any</option>
+                  <option value="never">Never</option>
+                  <option value="socially">Socially</option>
+                  <option value="occasionally">Occasionally</option>
+                  <option value="regularly">Regularly</option>
+                  <option value="prefer-not-say">Prefer not to say</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Wine className="h-4 w-4 text-gray-400" />
+                  Drinking
+                </span>
+                <select
+                  value={formData.preferredDrinking}
+                  onChange={(e) => handleChange("preferredDrinking", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                >
+                  <option value="any">Any</option>
+                  <option value="never">Never</option>
+                  <option value="socially">Socially</option>
+                  <option value="occasionally">Occasionally</option>
+                  <option value="regularly">Regularly</option>
+                  <option value="prefer-not-say">Prefer not to say</option>
+                </select>
+              </label>
             </div>
 
             <div className="rounded-xl bg-pink-50/60 p-4">
@@ -786,25 +1268,8 @@ export default function ProfileSettings() {
               />
             </div>
 
-            <div className="grid gap-4">
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Preferred Intentions
-                </span>
-                <select
-                  value={formData.preferredIntentions}
-                  onChange={(e) => handleChange("preferredIntentions", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                >
-                  <option value="">Select intention</option>
-                  <option value="relationship">Relationship</option>
-                  <option value="casual">Casual</option>
-                  <option value="friends">Friends</option>
-                  <option value="not-sure">Not sure</option>
-                </select>
-              </label>
-            </div>
           </section>
+          )}
 
           <div className="pb-8 pt-2">
             <button

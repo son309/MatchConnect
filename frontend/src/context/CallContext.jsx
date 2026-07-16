@@ -57,6 +57,51 @@ const fetchICEServers = async () => {
   }
 };
 
+function buildVideoConstraints(deviceId) {
+  if (deviceId) {
+    return {
+      deviceId: { exact: deviceId },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    };
+  }
+
+  return {
+    facingMode: "user",
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  };
+}
+
+function buildAudioConstraints(deviceId) {
+  const audioConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+
+  if (!deviceId) return audioConstraints;
+
+  return {
+    ...audioConstraints,
+    deviceId: { exact: deviceId },
+  };
+}
+
+function addMissingLocalTracks(peerConnection, stream) {
+  if (!peerConnection || !stream) return;
+
+  stream.getTracks().forEach((track) => {
+    const hasSenderForKind = peerConnection
+      .getSenders()
+      .some((sender) => sender.track?.kind === track.kind);
+
+    if (!hasSenderForKind) {
+      peerConnection.addTrack(track, stream);
+    }
+  });
+}
+
 export const CallProvider = ({ children }) => {
   const { socket } = useSocket();
   const { authUser } = useAuth();
@@ -75,6 +120,12 @@ export const CallProvider = ({ children }) => {
   // Streams
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState(
+    () => localStorage.getItem("selectedVideoDeviceId") || ""
+  );
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState(
+    () => localStorage.getItem("selectedAudioDeviceId") || ""
+  );
 
   // ICE servers config
   const [iceServers, setIceServers] = useState(null);
@@ -83,6 +134,16 @@ export const CallProvider = ({ children }) => {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const socketRef = useRef(null);
+  const selectedVideoDeviceIdRef = useRef(selectedVideoDeviceId);
+  const selectedAudioDeviceIdRef = useRef(selectedAudioDeviceId);
+
+  useEffect(() => {
+    selectedVideoDeviceIdRef.current = selectedVideoDeviceId;
+  }, [selectedVideoDeviceId]);
+
+  useEffect(() => {
+    selectedAudioDeviceIdRef.current = selectedAudioDeviceId;
+  }, [selectedAudioDeviceId]);
 
   // Keep socket ref updated
   useEffect(() => {
@@ -106,28 +167,75 @@ export const CallProvider = ({ children }) => {
   }, []);
 
   // Get user media logic
-  const getUserMedia = useCallback(async (isVideo = true) => {
-    if (localStreamRef.current) return localStreamRef.current;
+  const getUserMedia = useCallback(async (isVideo = true, options = {}) => {
+    if (localStreamRef.current && !options.forceNew) return localStreamRef.current;
+
+    if (options.forceNew) {
+      stopStream(localStreamRef.current);
+      localStreamRef.current = null;
+      setLocalStream(null);
+    }
 
     try {
+      const requestedVideoDeviceId = options.videoDeviceId ?? selectedVideoDeviceIdRef.current;
+      const requestedAudioDeviceId = options.audioDeviceId ?? selectedAudioDeviceIdRef.current;
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideo ? {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        } : false,
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        },
+        video: isVideo ? buildVideoConstraints(requestedVideoDeviceId) : false,
+        audio: buildAudioConstraints(requestedAudioDeviceId),
       });
       setLocalStream(stream);
       setHasVideo(isVideo);
       localStreamRef.current = stream;
+      const videoDeviceId = stream.getVideoTracks()[0]?.getSettings?.().deviceId;
+      if (videoDeviceId) {
+        setSelectedVideoDeviceId(videoDeviceId);
+        localStorage.setItem("selectedVideoDeviceId", videoDeviceId);
+      }
+      const audioDeviceId = stream.getAudioTracks()[0]?.getSettings?.().deviceId;
+      if (audioDeviceId) {
+        setSelectedAudioDeviceId(audioDeviceId);
+        localStorage.setItem("selectedAudioDeviceId", audioDeviceId);
+      }
       return stream;
     } catch (error) {
       console.error("Error getting media:", error);
+      const requestedVideoDeviceId = options.videoDeviceId ?? selectedVideoDeviceIdRef.current;
+      const requestedAudioDeviceId = options.audioDeviceId ?? selectedAudioDeviceIdRef.current;
+
+      if ((isVideo && requestedVideoDeviceId) || requestedAudioDeviceId) {
+        try {
+          if (requestedVideoDeviceId) {
+            localStorage.removeItem("selectedVideoDeviceId");
+            setSelectedVideoDeviceId("");
+            selectedVideoDeviceIdRef.current = "";
+          }
+          if (requestedAudioDeviceId) {
+            localStorage.removeItem("selectedAudioDeviceId");
+            setSelectedAudioDeviceId("");
+            selectedAudioDeviceIdRef.current = "";
+          }
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: isVideo ? buildVideoConstraints("") : false,
+            audio: buildAudioConstraints(""),
+          });
+          setLocalStream(fallbackStream);
+          setHasVideo(isVideo);
+          localStreamRef.current = fallbackStream;
+          const videoDeviceId = fallbackStream.getVideoTracks()[0]?.getSettings?.().deviceId;
+          if (videoDeviceId) {
+            setSelectedVideoDeviceId(videoDeviceId);
+            localStorage.setItem("selectedVideoDeviceId", videoDeviceId);
+          }
+          const audioDeviceId = fallbackStream.getAudioTracks()[0]?.getSettings?.().deviceId;
+          if (audioDeviceId) {
+            setSelectedAudioDeviceId(audioDeviceId);
+            localStorage.setItem("selectedAudioDeviceId", audioDeviceId);
+          }
+          return fallbackStream;
+        } catch (fallbackError) {
+          console.error("Default camera fallback failed:", fallbackError);
+        }
+      }
 
       // Handle different error types with user-friendly messages
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
@@ -142,11 +250,21 @@ export const CallProvider = ({ children }) => {
         try {
           const fallbackStream = await navigator.mediaDevices.getUserMedia({
             video: isVideo ? { facingMode: "user" } : false,
-            audio: { echoCancellation: true, noiseSuppression: true },
+            audio: buildAudioConstraints(""),
           });
           setLocalStream(fallbackStream);
           setHasVideo(isVideo);
           localStreamRef.current = fallbackStream;
+          const videoDeviceId = fallbackStream.getVideoTracks()[0]?.getSettings?.().deviceId;
+          if (videoDeviceId) {
+            setSelectedVideoDeviceId(videoDeviceId);
+            localStorage.setItem("selectedVideoDeviceId", videoDeviceId);
+          }
+          const audioDeviceId = fallbackStream.getAudioTracks()[0]?.getSettings?.().deviceId;
+          if (audioDeviceId) {
+            setSelectedAudioDeviceId(audioDeviceId);
+            localStorage.setItem("selectedAudioDeviceId", audioDeviceId);
+          }
           return fallbackStream;
         } catch (fallbackError) {
           console.error("Fallback getUserMedia failed:", fallbackError);
@@ -157,6 +275,100 @@ export const CallProvider = ({ children }) => {
       }
 
       return null;
+    }
+  }, [stopStream]);
+
+  const renegotiateConnection = useCallback(async (recipientId, callId) => {
+    if (!peerConnectionRef.current || !socketRef.current || !recipientId || !callId) return;
+
+    const offer = await peerConnectionRef.current.createOffer();
+    await peerConnectionRef.current.setLocalDescription(offer);
+    socketRef.current.emit("webrtc:offer", { recipientId, offer, callId });
+  }, []);
+
+  const switchCamera = useCallback(async (videoDeviceId, recipientId, callId) => {
+    if (!videoDeviceId) return false;
+
+    try {
+      const cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: buildVideoConstraints(videoDeviceId),
+        audio: false,
+      });
+      const nextVideoTrack = cameraStream.getVideoTracks()[0];
+      if (!nextVideoTrack) return false;
+
+      const currentStream = localStreamRef.current || new MediaStream();
+      const previousVideoTracks = currentStream.getVideoTracks();
+      previousVideoTracks.forEach((track) => {
+        currentStream.removeTrack(track);
+        track.stop();
+      });
+      currentStream.addTrack(nextVideoTrack);
+
+      const videoSender = peerConnectionRef.current
+        ?.getSenders()
+        .find((sender) => sender.track?.kind === "video");
+      if (videoSender) {
+        await videoSender.replaceTrack(nextVideoTrack);
+      } else if (peerConnectionRef.current) {
+        peerConnectionRef.current.addTrack(nextVideoTrack, currentStream);
+        await renegotiateConnection(recipientId, callId);
+      }
+
+      localStreamRef.current = currentStream;
+      setLocalStream(new MediaStream(currentStream.getTracks()));
+      setHasVideo(true);
+      setCallState((prev) => ({ ...prev, callType: "video" }));
+      setSelectedVideoDeviceId(videoDeviceId);
+      localStorage.setItem("selectedVideoDeviceId", videoDeviceId);
+      return true;
+    } catch (error) {
+      console.error("Error switching camera:", error);
+      alert("Unable to switch camera. Please check whether the selected camera is available.");
+      return false;
+    }
+  }, [renegotiateConnection]);
+
+  const switchMicrophone = useCallback(async (audioDeviceId) => {
+    if (!audioDeviceId) return false;
+
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: buildAudioConstraints(audioDeviceId),
+      });
+      const nextAudioTrack = micStream.getAudioTracks()[0];
+      if (!nextAudioTrack) return false;
+
+      const currentStream = localStreamRef.current || new MediaStream();
+      const previousAudioTrack = currentStream.getAudioTracks()[0];
+      const wasEnabled = previousAudioTrack ? previousAudioTrack.enabled : true;
+      nextAudioTrack.enabled = wasEnabled;
+
+      currentStream.getAudioTracks().forEach((track) => {
+        currentStream.removeTrack(track);
+        track.stop();
+      });
+      currentStream.addTrack(nextAudioTrack);
+
+      const audioSender = peerConnectionRef.current
+        ?.getSenders()
+        .find((sender) => sender.track?.kind === "audio");
+      if (audioSender) {
+        await audioSender.replaceTrack(nextAudioTrack);
+      } else if (peerConnectionRef.current) {
+        peerConnectionRef.current.addTrack(nextAudioTrack, currentStream);
+      }
+
+      localStreamRef.current = currentStream;
+      setLocalStream(new MediaStream(currentStream.getTracks()));
+      setSelectedAudioDeviceId(audioDeviceId);
+      localStorage.setItem("selectedAudioDeviceId", audioDeviceId);
+      return true;
+    } catch (error) {
+      console.error("Error switching microphone:", error);
+      alert("Unable to switch microphone. Please check whether the selected microphone is available.");
+      return false;
     }
   }, []);
 
@@ -329,9 +541,10 @@ export const CallProvider = ({ children }) => {
 
     const handleWebRTCOffer = async ({ callId, senderId, offer }) => {
       const pc = createPeerConnection(senderId, callId);
-      localStreamRef.current
-        ?.getTracks()
-        .forEach((t) => pc.addTrack(t, localStreamRef.current));
+      addMissingLocalTracks(pc, localStreamRef.current);
+      if (offer?.sdp?.includes("m=video")) {
+        setCallState((prev) => ({ ...prev, callType: "video" }));
+      }
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -348,9 +561,7 @@ export const CallProvider = ({ children }) => {
 
     const handleCallAccepted = async ({ callId, receiverId }) => {
       const pc = createPeerConnection(receiverId, callId);
-      localStreamRef.current
-        ?.getTracks()
-        .forEach((t) => pc.addTrack(t, localStreamRef.current));
+      addMissingLocalTracks(pc, localStreamRef.current);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       socket.emit("webrtc:offer", { recipientId: receiverId, offer, callId });
@@ -408,11 +619,15 @@ export const CallProvider = ({ children }) => {
         incomingCall,
         setIncomingCall,
         hasVideo,
+        selectedVideoDeviceId,
+        selectedAudioDeviceId,
         initiateCall,
         acceptCall,
         rejectCall,
         endCall,
         getUserMedia,
+        switchCamera,
+        switchMicrophone,
       }}
     >
       {children}

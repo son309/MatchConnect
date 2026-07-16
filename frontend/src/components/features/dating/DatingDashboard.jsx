@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Heart,
+  Info,
   Loader2,
   MapPin,
   PencilLine,
@@ -12,6 +13,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useDating } from "../../../context/DatingContext";
+import ProfileDetailModal from "./ProfileDetailModal";
 
 const intentionLabels = {
   relationship: "Relationship",
@@ -75,11 +77,11 @@ function ProfileCard({
   passLabel = "Pass",
   likeTitle = "Like",
   passTitle = "Pass",
+  onViewDetails,
   className = "",
 }) {
   const dating = profile?.datingProfile || {};
-  const interests = Array.isArray(dating.interests) ? dating.interests : [];
-  const sharedInterests = sharedInterestsFor(currentUser, profile);
+  const interests = Array.isArray(dating.interests) ? dating.interests.slice(0, 5) : [];
   const isProfileVerified = profile?.profileVerification?.status === "verified";
   const photos = profilePhotos(profile);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -235,33 +237,9 @@ function ProfileCard({
 
       <div className="flex min-h-0 flex-col justify-between overflow-y-auto p-5">
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {isProfileVerified && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                <ShieldCheck size={13} />
-                Verified
-              </span>
-            )}
-            {sharedInterests.length > 0 && (
-              <span className="rounded-lg bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-600">
-                {sharedInterests.length} shared interest{sharedInterests.length > 1 ? "s" : ""}
-              </span>
-            )}
-            {dating.intentions && (
-              <span className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
-                {intentionLabels[dating.intentions] || dating.intentions}
-              </span>
-            )}
-            {dating.gender && (
-              <span className="rounded-lg bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
-                {dating.gender}
-              </span>
-            )}
-          </div>
-
           <div>
             <h3 className="text-sm font-bold text-gray-900">Bio</h3>
-            <p className="mt-2 text-sm leading-6 text-gray-600">
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">
               {dating.bio || "No bio yet."}
             </p>
           </div>
@@ -273,7 +251,7 @@ function ProfileCard({
                 {interests.map((interest) => (
                   <span
                     key={interest}
-                    className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600"
                   >
                     {interest}
                   </span>
@@ -281,6 +259,17 @@ function ProfileCard({
               </div>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={onViewDetails}
+            onPointerDown={(event) => event.stopPropagation()}
+            disabled={disabled}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-pink-200 bg-pink-50 px-4 py-2.5 text-sm font-semibold text-pink-600 transition hover:bg-pink-100 disabled:opacity-50"
+          >
+            <Info size={17} />
+            View details
+          </button>
         </div>
 
         <div
@@ -369,7 +358,7 @@ function ProfilePreviewCard({ profile, currentUser }) {
 
           <div>
             <h3 className="text-sm font-bold text-gray-900">Bio</h3>
-            <p className="mt-2 line-clamp-4 text-sm leading-6 text-gray-600">
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">
               {dating.bio || "No bio yet."}
             </p>
           </div>
@@ -413,6 +402,7 @@ function SwipeDeck({ current, next, currentUser, children }) {
 export default function DatingDashboard() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => normalizeTab(searchParams.get("tab")));
+  const [detailProfile, setDetailProfile] = useState(null);
   const { authUser } = useAuth();
   const {
     discoverProfiles,
@@ -474,7 +464,7 @@ export default function DatingDashboard() {
                   Fill in and save your bio, age, gender, city, intentions, interests, preferences, and at least one dating photo before using Discover.
                 </p>
                 <Link
-                  to="/chat/profile"
+                  to="/chat/dating-profile"
                   className="mt-5 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-600"
                 >
                   Update profile
@@ -489,6 +479,7 @@ export default function DatingDashboard() {
                   disabled={isDatingActionLoading}
                   onLike={() => likeProfile(currentProfile._id)}
                   onPass={() => passProfile(currentProfile._id)}
+                  onViewDetails={() => setDetailProfile(currentProfile)}
                   className="shadow-lg shadow-gray-200/70"
                 />
               </SwipeDeck>
@@ -520,6 +511,7 @@ export default function DatingDashboard() {
                   passLabel="Nope"
                   likeTitle="Accept match"
                   passTitle="Reject"
+                  onViewDetails={() => setDetailProfile(currentLikedProfile)}
                   className="shadow-lg shadow-gray-200/70"
                 />
               </SwipeDeck>
@@ -532,6 +524,11 @@ export default function DatingDashboard() {
           </div>
         ) : null}
       </div>
+      <ProfileDetailModal
+        profile={detailProfile}
+        currentUser={authUser}
+        onClose={() => setDetailProfile(null)}
+      />
     </div>
   );
 }

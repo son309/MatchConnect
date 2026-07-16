@@ -13,6 +13,7 @@ const ChatArea = forwardRef(function ChatArea({
   isInfoSidebarOpen,
   externalHighlightMessageId,
   onHighlightProcessed,
+  onProfileClick,
 }, ref) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [highlightMessageId, setHighlightMessageId] = useState(null);
@@ -121,6 +122,7 @@ const ChatArea = forwardRef(function ChatArea({
         isInfoSidebarOpen={isInfoSidebarOpen}
         onToggleSearch={handleToggleSearch}
         isSearchOpen={isSearchOpen}
+        onProfileClick={onProfileClick}
       />
 
       {/* Search Panel */}

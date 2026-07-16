@@ -11,6 +11,7 @@ import CallsDashboard from "./components/features/calls/CallsDashboard";
 import DatingDashboard from "./components/features/dating/DatingDashboard";
 import FriendsDashboard from "./components/features/friends/FriendsDashboard";
 import ChatDashboard from "./components/features/chat/ChatDashboard";
+import BlindMatchDashboard from "./components/features/blind/BlindMatchDashboard";
 import SettingsDashboard from "./components/features/settings/SettingsDashboard";
 import { useAuth } from "./context/AuthContext";
 import AuthLayout from './layouts/AuthLayout';
@@ -60,8 +61,11 @@ function App() {
           <Route path="home" element={!isAdmin ? <HomeDashboard /> : <Navigate to="/chat/admin" replace />} />
           <Route path="messages" element={!isAdmin ? <ChatDashboard title="Messages" /> : <Navigate to="/chat/admin" replace />} />
           <Route path="matches" element={!isAdmin ? <ChatDashboard title="Matches" /> : <Navigate to="/chat/admin" replace />} />
+          <Route path="blind-match" element={!isAdmin ? <BlindMatchDashboard /> : <Navigate to="/chat/admin" replace />} />
           <Route path="dating" element={!isAdmin ? <DatingDashboard /> : <Navigate to="/chat/admin" replace />} />
-          <Route path="profile" element={!isAdmin ? <ProfileSettings /> : <Navigate to="/chat/admin" replace />} />
+          <Route path="profile" element={!isAdmin ? <Navigate to="/chat/dating-profile" replace /> : <Navigate to="/chat/admin" replace />} />
+          <Route path="dating-profile" element={!isAdmin ? <ProfileSettings view="profile" /> : <Navigate to="/chat/admin" replace />} />
+          <Route path="dating-preferences" element={!isAdmin ? <ProfileSettings view="preferences" /> : <Navigate to="/chat/admin" replace />} />
           <Route path="friends" element={!isAdmin ? <FriendsDashboard /> : <Navigate to="/chat/admin" replace />}>
             <Route index element={<Navigate to="all" replace />} />
             <Route path="all" element={<FriendsList type="all" />} />

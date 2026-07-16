@@ -17,6 +17,7 @@ const sanitizeUser = (user) => ({
   suspendedReason: user.suspendedReason,
   profileVerification: user.profileVerification,
   datingProfile: user.datingProfile,
+  datingPreferences: user.datingPreferences,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

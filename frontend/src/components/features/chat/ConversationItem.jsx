@@ -1,11 +1,12 @@
 import { useSocket } from "../../../context/SocketContext";
-import { Cloud, Heart } from "lucide-react";
+import { Cloud, Heart, HeartHandshake } from "lucide-react";
 
 export default function ConversationItem({ chat, isActive, onClick }) {
   const { onlineUsers } = useSocket();
 
   // Kiểm tra nếu là My Cloud (tự chat với chính mình)
   const isSelfChat = chat.isSelfChat;
+  const isNewMatchesHub = chat.isNewMatchesHub;
   const isDatingMatch = chat.isDatingMatch || chat.isMatch;
 
   // Đồng bộ: Kiểm tra online dựa trên _id từ onlineUsers hoặc thuộc tính isOnline của chat
@@ -25,7 +26,11 @@ export default function ConversationItem({ chat, isActive, onClick }) {
         }`}
     >
       <div className="relative">
-        {isSelfChat ? (
+        {isNewMatchesHub ? (
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-rose-400 flex items-center justify-center border border-pink-100">
+            <HeartHandshake size={24} className="text-white" />
+          </div>
+        ) : isSelfChat ? (
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center border border-blue-200">
             <Cloud size={24} className="text-white" />
           </div>
@@ -36,7 +41,7 @@ export default function ConversationItem({ chat, isActive, onClick }) {
             className="w-12 h-12 rounded-full object-cover border border-gray-100"
           />
         )}
-        {isOnline && !isSelfChat && (
+        {isOnline && !isSelfChat && !isNewMatchesHub && (
           <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
         )}
       </div>
@@ -47,7 +52,7 @@ export default function ConversationItem({ chat, isActive, onClick }) {
             ? isSelfChat ? "text-blue-700" : "text-pink-700"
             : "text-gray-800"
             }`}>
-            {isSelfChat ? "Cloud" : chat.fullName}
+            {isNewMatchesHub ? "New Matches" : isSelfChat ? "Cloud" : chat.fullName}
           </p>
           <span className="text-[10px] text-gray-400">{chat.lastMessageTimeFormatted}</span>
         </div>
@@ -56,11 +61,18 @@ export default function ConversationItem({ chat, isActive, onClick }) {
             ? isSelfChat ? "text-blue-400 font-medium" : "text-pink-400 font-medium"
             : "text-gray-500"
             }`}>
-            {isSelfChat
+            {isNewMatchesHub
+              ? (chat.lastMessage || "People you matched with")
+              : isSelfChat
               ? (chat.lastMessage || "Save notes & files here")
               : (chat.lastMessage || (isDatingMatch ? "New match" : ""))}
           </p>
-          {isDatingMatch && !chat.unreadCount && !isSelfChat && (
+          {isNewMatchesHub && Number.isFinite(Number(chat.count)) && (
+            <span className="flex items-center justify-center rounded-full bg-pink-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              {chat.count}
+            </span>
+          )}
+          {isDatingMatch && !chat.unreadCount && !isSelfChat && !isNewMatchesHub && (
             <Heart size={13} className="text-rose-400" fill="currentColor" />
           )}
           {chat.unreadCount > 0 && (

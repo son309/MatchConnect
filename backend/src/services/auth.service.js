@@ -36,6 +36,7 @@ const publicUser = (user) => ({
     isSuspended: user.isSuspended,
     profileVerification: user.profileVerification,
     datingProfile: user.datingProfile,
+    datingPreferences: user.datingPreferences,
 });
 
 /**
